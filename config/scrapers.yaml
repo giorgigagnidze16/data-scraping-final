@@ -4,8 +4,10 @@ amazon:
     laptops: "/s?k=laptops"
     monitors: "/s?k=monitors"
     gpus: "/s?k=gpu"
-  max_pages: 1
-  delay: 2
+    ram: "/s?k=RAM"
+    gadgets: "/s?k=gadgets"
+  max_pages: 20
+  delay: 1
 
 ebay:
   base_url: "https://www.ebay.com"
