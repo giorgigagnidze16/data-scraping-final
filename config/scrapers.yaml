@@ -1,0 +1,17 @@
+amazon:
+  base_url: "https://www.amazon.com"
+  categories:
+    laptops: "/s?k=laptops"
+    monitors: "/s?k=monitors"
+    gpus: "/s?k=gpu"
+  max_pages: 1
+  delay: 2
+
+ebay:
+  base_url: "https://www.ebay.com"
+  categories:
+    laptops: "/sch/i.html?_nkw=laptops"
+    monitors: "/sch/i.html?_nkw=monitors"
+    gpus: "/sch/i.html?_nkw=gpus"
+  max_pages: 10
+  delay: 3
