@@ -1,3 +1,7 @@
+import json
+import math
+
+import numpy as np
 import pandas as pd
 import psycopg2
 from sqlalchemy import create_engine, Column, Integer, String, Float, UniqueConstraint
@@ -155,3 +159,90 @@ def load_products(as_dataframe=True):
     if as_dataframe:
         return df
     return df.to_dict(orient='records')
+
+def convert_tuple_keys_to_str(obj):
+    if isinstance(obj, dict):
+        new_dict = {}
+        for k, v in obj.items():
+            if isinstance(k, tuple):
+                k = "_".join(str(ki) for ki in k)
+            new_dict[str(k)] = convert_tuple_keys_to_str(v)
+        return new_dict
+    elif isinstance(obj, list):
+        return [convert_tuple_keys_to_str(i) for i in obj]
+    else:
+        return obj
+
+def convert_for_json(obj):
+    if isinstance(obj, pd.DataFrame):
+        return obj.to_dict(orient="records")
+    elif isinstance(obj, dict):
+        return {k: convert_for_json(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_for_json(i) for i in obj]
+    else:
+        return obj
+
+def sanitize_for_json(obj):
+    """Recursively replace NaN, Inf, -Inf with None, and convert DataFrames to records."""
+    if isinstance(obj, pd.DataFrame):
+        return sanitize_for_json(obj.to_dict(orient="records"))
+    elif isinstance(obj, dict):
+        return {k: sanitize_for_json(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [sanitize_for_json(i) for i in obj]
+    elif isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        else:
+            return obj
+    elif isinstance(obj, (np.floating, np.integer)):
+        if np.isnan(obj) or np.isinf(obj):
+            return None
+        else:
+            return float(obj)
+    else:
+        return obj
+
+def save_analysis_summary(run_id, source, summary_json):
+    conn = psycopg2.connect(**_db_params)
+    cur = conn.cursor()
+    summary_json = convert_tuple_keys_to_str(summary_json)
+    summary_json = sanitize_for_json(summary_json)
+    cur.execute(
+        "INSERT INTO analysis_summary (run_id, source, summary_json) VALUES (%s, %s, %s)",
+        (run_id, source, json.dumps(summary_json))
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+    logger.info(f"Saved analysis_summary for source={source}, run_id={run_id}")
+
+def save_analysis_group_stats(run_id, group_type, group_value, source, stats_json):
+    conn = psycopg2.connect(**_db_params)
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO analysis_group_stats (run_id, group_type, group_value, source, stats_json) VALUES (%s, %s, %s, %s, %s)",
+        (run_id, group_type, group_value, source, json.dumps(stats_json))
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+    logger.info(f"Saved analysis_group_stats for {group_type}={group_value}, source={source}")
+
+def save_analysis_trends(run_id, trend_type, source, trend_json):
+    conn = psycopg2.connect(**_db_params)
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO analysis_trends (run_id, trend_type, source, trend_json) VALUES (%s, %s, %s, %s)",
+        (run_id, trend_type, source, json.dumps(trend_json))
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+    logger.info(f"Saved analysis_trends for trend_type={trend_type}, source={source}")
+
+def generate_run_id():
+    """Generate a new UUID for analysis run."""
+    import uuid
+    return str(uuid.uuid4())
