@@ -26,7 +26,7 @@ class ScraperOrchestrator:
             scraper_cls=scraper_cls,
             base_config=config,
             jobs=categories,
-            max_workers=len(categories),
+            max_workers=len(categories) + 2,
             url_prefix=base_url,
         )
         all_products = []

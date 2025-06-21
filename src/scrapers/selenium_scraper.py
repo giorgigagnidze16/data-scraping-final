@@ -221,7 +221,6 @@ class AmazonSeleniumScraper(BaseScraper):
         """
         parses search results page and returns a list of product dicts.
         """
-        logger.debug("Parsing HTML page for products.")
         soup = BeautifulSoup(html, "html.parser")
         products = soup.select("div[data-component-type='s-search-result']")
         all_products = []
@@ -279,7 +278,7 @@ class AmazonSeleniumScraper(BaseScraper):
                     logger.warning(f"Failed to click next: {e}", exc_info=True)
                     break
 
-        logger.info(f"Scraping completed. Total products: {len(all_products)}")
+        logger.info(f"Scraping {self.driver.current_url} completed. Total products: {len(all_products)}")
         return all_products
 
     def scrape(self, url: str):
