@@ -1,5 +1,3 @@
-# tests/unit/test_selenium_scraper.py
-
 from unittest.mock import patch, MagicMock
 
 import pytest
