@@ -215,8 +215,7 @@ class AmazonSeleniumScraper(BaseScraper):
         all_products = []
         for product_html in products:
             data = parse_product(product_html)
-            if all(data.get(field) for field in data.keys()):
-                all_products.append(data)
+            all_products.append(data)
         logger.info(f"Parsed {len(all_products)} valid products from page.")
         return all_products
 
