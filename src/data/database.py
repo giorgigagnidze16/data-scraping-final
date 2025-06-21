@@ -11,6 +11,20 @@ logger = get_logger("database")
 Base = declarative_base()
 
 
+class ProductRaw(Base):
+    __tablename__ = 'products_raw'
+    id = Column(Integer, primary_key=True)
+    source = Column(String)
+    category = Column(String)
+    title = Column(String, nullable=True)
+    price = Column(Float, nullable=True)
+    rating = Column(Float)
+    review_count = Column(Integer)
+    url = Column(String, nullable=True)
+    img_url = Column(String)
+    __table_args__ = (UniqueConstraint('url', name='uix_url_raw'),)
+
+
 class Product(Base):
     __tablename__ = 'products'
     id = Column(Integer, primary_key=True)
@@ -20,9 +34,8 @@ class Product(Base):
     price = Column(Float, nullable=False)
     rating = Column(Float)
     review_count = Column(Integer)
-    url = Column(String, unique=True, nullable=False)
+    url = Column(String, nullable=False)
     img_url = Column(String)
-
     __table_args__ = (UniqueConstraint('url', name='uix_url'),)
 
 
@@ -72,6 +85,41 @@ def init_db_with_sql(schema_path="schema.sql"):
     except Exception as e:
         logger.error(f"Error running schema.sql: {e}")
         raise
+
+
+def save_products_raw(products):
+    if _Session is None:
+        logger.error("Sessionmaker not configured!")
+        raise Exception("DB session not configured.")
+    session = _Session()
+    count_inserted = 0
+    for prod in products:
+        p = prod.__dict__ if hasattr(prod, "__dict__") else prod
+        try:
+            existing = session.query(ProductRaw).filter_by(url=p.get('url')).first()
+            if not existing:
+                product_obj = ProductRaw(**p)
+                session.add(product_obj)
+                count_inserted += 1
+        except Exception as e:
+            logger.warning(f"Error inserting raw product ({p.get('title', '')}): {e}")
+    session.commit()
+    session.close()
+    logger.info(f"Inserted {count_inserted} new raw products.")
+
+
+def load_products_raw(as_dataframe=True):
+    if _Session is None:
+        logger.error("Sessionmaker not configured! Call configure_engine() first.")
+        raise Exception("Database session not configured.")
+    session = _Session()
+    q = session.query(ProductRaw)
+    df = pd.read_sql(q.statement, session.bind)
+    session.close()
+    logger.info(f"Loaded {len(df)} raw products from database.")
+    if as_dataframe:
+        return df
+    return df.to_dict(orient='records')
 
 
 def save_products(products):
