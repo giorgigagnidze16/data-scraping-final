@@ -1,3 +1,5 @@
+import pandas as pd
+
 from src.analysis.analysis_engine import AnalysisEngine
 from src.pipeline.data_pipeline import DataPipeline
 from src.pipeline.orchestrator import ScraperOrchestrator
@@ -27,7 +29,6 @@ def main():
             return
 
         logger.info("Exporting cleaned product data in all formats...")
-        import pandas as pd
         pd.DataFrame(df_clean).to_csv("data_output/products_clean.csv", index=False)
         pd.DataFrame(df_clean).to_json("data_output/products_clean.json", orient="records", force_ascii=False, indent=2)
         pd.DataFrame(df_clean).to_excel("data_output/products_clean.xlsx", index=False)
@@ -39,7 +40,7 @@ def main():
         logger.info("All exports completed successfully.")
         logger.info("Pipeline completed successfully!")
 
-    except Exception as e:
+    except Exception:
         logger.exception("Pipeline failed due to an error:")
         raise
 
