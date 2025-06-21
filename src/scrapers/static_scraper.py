@@ -96,13 +96,6 @@ class MicroCenterStaticScraper(BaseScraper):
                     except Exception:
                         price = None
 
-        # SKU
-        sku_tag = card.select_one('p.sku')
-        sku = sku_tag.get_text(strip=True).replace("SKU:", "").strip() if sku_tag else None
-
-        desc_tag = card.select_one('.pDescription')
-        desc_tag.get_text(separator=' ', strip=True) if desc_tag else None
-
         return {
             'title': title,
             'price': price,
