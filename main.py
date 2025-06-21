@@ -1,5 +1,5 @@
 from src.analysis.analysis_engine import AnalysisEngine
-from src.data.data_pipeline import DataPipeline
+from src.pipeline.data_pipeline import DataPipeline
 from src.pipeline.orchestrator import ScraperOrchestrator
 from src.utils.logger import get_logger
 
