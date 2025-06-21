@@ -157,13 +157,19 @@ class AmazonSeleniumScraper(BaseScraper):
         logger.info(f"Selected User-Agent: {user_agent}")
         return webdriver.Chrome(options=options)
 
-    def wait_for_products(self, timeout=20):
+    def wait_for_products(self, timeout=30):
         """
         wait until product blocks are loaded.
         """
-        WebDriverWait(self.driver, timeout).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-component-type='s-search-result']"))
-        )
+        try:
+            WebDriverWait(self.driver, timeout).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "div[data-component-type='s-search-result']"))
+            )
+        except Exception as e:
+            if self.is_captcha_page():
+                logger.warning("CAPTCHA detected. Solve or rotate proxy/user-agent.", e)
+            else:
+                logger.warn("Timed out waiting for product content.")
 
     def is_captcha_page(self):
         """
@@ -186,7 +192,13 @@ class AmazonSeleniumScraper(BaseScraper):
                 logger.info(f"Fetching URL (attempt {attempt}): {url}")
                 self.driver.get(url)
                 time.sleep(random.uniform(self.delay, self.delay + 2))
-                self.wait_for_products()
+                try:
+                    self.wait_for_products()
+                except Exception as e:
+                    if self.is_captcha_page():
+                        logger.warning("CAPTCHA detected. Solve or rotate proxy/user-agent.", e)
+                    else:
+                        logger.error("Timed out waiting for product content.", e, exc_info=True)
                 return self.driver.page_source
             except Exception as e:
                 if self.is_captcha_page():
@@ -238,15 +250,8 @@ class AmazonSeleniumScraper(BaseScraper):
         self.driver.get(category_url)
         for page in range(1, max_pages + 1):
             logger.info(f"Scraping Amazon page {page}: {self.driver.current_url}")
-            try:
-                self.wait_for_products()
-            except Exception as e:
-                if self.is_captcha_page():
-                    logger.warning("CAPTCHA detected. Solve or rotate proxy/user-agent.", e)
-                    break
-                else:
-                    logger.error("Timed out waiting for product content.", e, exc_info=True)
-                    break
+
+            self.wait_for_products()
 
             html = self.driver.page_source
             page_products = self.parse(html)

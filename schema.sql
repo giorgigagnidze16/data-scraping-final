@@ -57,3 +57,6 @@ CREATE TABLE IF NOT EXISTS public.analysis_trends (
         REFERENCES public.analysis_summary(run_id, source)
         ON DELETE CASCADE
 );
+
+
+TRUNCATE analysis_summary, products, products_raw, analysis_trends CASCADE;

@@ -1,14 +1,14 @@
 amazon:
   delay: 1
-  max_pages: 1
+  max_pages: 20
   max_retries: 3
   base_url: "https://www.amazon.com"
   categories:
     laptops: "/s?k=laptops"
-#    monitors: "/s?k=monitors"
-#    gpus: "/s?k=gpu"
-#    ram: "/s?k=RAM"
-#    gadgets: "/s?k=gadgets"
+    monitors: "/s?k=monitors"
+    gpus: "/s?k=gpu"
+    ram: "/s?k=RAM"
+    gadgets: "/s?k=gadgets"
   user_agents:
     - "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
     - "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Brave Chrome/126.0.0.0 Safari/537.36"
