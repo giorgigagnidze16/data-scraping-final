@@ -9,3 +9,4 @@ fake-useragent
 sqlalchemy
 matplotlib
 lxml
+pytest

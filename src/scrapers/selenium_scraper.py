@@ -4,12 +4,17 @@ import time
 
 from bs4 import BeautifulSoup
 from selenium import webdriver
+from selenium.common import TimeoutException
+from selenium.webdriver import ActionChains
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
 from src.scrapers.base_scraper import BaseScraper
+from src.utils.logger import get_logger
+
+logger = get_logger("amazon-selenium")
 
 
 def extract_rating(node):
@@ -58,7 +63,7 @@ class AmazonSeleniumScraper(BaseScraper):
 
     Usage:
         scraper = AmazonSeleniumScraper(config)
-        data = scraper.scrape(category_url)  # Uses the base class method
+        data = scraper.scrape(category_url)  #  base class method
         scraper.close()
     """
 
@@ -70,6 +75,7 @@ class AmazonSeleniumScraper(BaseScraper):
         self.categories = config['categories']
         self.max_pages = config['max_pages']
         self.delay = config['delay']
+        logger.info("AmazonSeleniumScraper initialized.")
 
     def wait_for_products(self, timeout=10):
         """
@@ -94,21 +100,23 @@ class AmazonSeleniumScraper(BaseScraper):
         """
         loads the URL in the browser, waits for dynamic content, and handles CAPTCHA if needed.
         """
+        logger.info(f"Fetching URL: {url}")
         self.driver.get(url)
         time.sleep(random.uniform(self.delay, self.delay + 2))
         try:
             self.wait_for_products(timeout=12)
         except Exception:
             if self.is_captcha_page():
-                print("[!] CAPTCHA detected. Use proxy/user-agent rotation or solve manually.")
+                logger.warning("CAPTCHA detected. Use proxy/user-agent rotation or solve manually.")
             else:
-                print("[!] Timed out waiting for product content.")
+                logger.error("Timed out waiting for product content.", exc_info=True)
         return self.driver.page_source
 
     def parse(self, html):
         """
         parses search results page and returns a list of product dicts.
         """
+        logger.info("Parsing HTML page for products.")
         soup = BeautifulSoup(html, "html.parser")
         products = soup.select("div[data-component-type='s-search-result']")
         all_products = []
@@ -116,6 +124,7 @@ class AmazonSeleniumScraper(BaseScraper):
             data = self.parse_product(product_html)
             if all(data.get(field) for field in data.keys()):
                 all_products.append(data)
+        logger.info(f"Parsed {len(all_products)} valid products from page.")
         return all_products
 
     def parse_product(self, product_html):
@@ -161,7 +170,7 @@ class AmazonSeleniumScraper(BaseScraper):
 
     def scrape_category(self, category_url, max_pages=None, delay=None):
         """
-        Scrapes multiple pages for a given search results
+        scrapes pages for a given search results, supports pagination
 
         Args:
             category_url (str): URL of the search - category.
@@ -177,34 +186,44 @@ class AmazonSeleniumScraper(BaseScraper):
 
         self.driver.get(category_url)
         for page in range(1, max_pages + 1):
-            print(f"Scraping Amazon page {page}: {self.driver.current_url}")
+            logger.info(f"Scraping Amazon page {page}: {self.driver.current_url}")
             try:
                 self.wait_for_products(timeout=12)
-            except Exception:
+            except Exception as e:
                 if self.is_captcha_page():
-                    print("[!] CAPTCHA detected. Solve or rotate proxy/user-agent.")
+                    logger.warning("CAPTCHA detected. Solve or rotate proxy/user-agent.", e)
                     break
                 else:
-                    print("[!] Timed out waiting for product content.")
+                    logger.error("Timed out waiting for product content.", e, exc_info=True)
                     break
 
             html = self.driver.page_source
             page_products = self.parse(html)
-            print(f"  Found {len(page_products)} products.")
+            logger.info(f"Found {len(page_products)} products on page {page}.")
             all_products.extend(page_products)
             time.sleep(delay)
 
             if page < max_pages:
                 try:
-                    next_btn = self.driver.find_element(By.CSS_SELECTOR,
-                                                        "a.s-pagination-next:not(.s-pagination-disabled)")
-                    self.driver.execute_script("arguments[0].scrollIntoView(true);", next_btn)
+                    self.driver.execute_script("""
+                                    let cover = document.getElementById('nav-cover');
+                                    if (cover) { cover.style.display = 'none'; }
+                                """)
+                    next_btn = WebDriverWait(self.driver, 10).until(
+                        EC.element_to_be_clickable((By.CSS_SELECTOR, "a.s-pagination-next:not(.s-pagination-disabled)"))
+                    )
+                    self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", next_btn)
                     time.sleep(0.5)
-                    next_btn.click()
+                    actions = ActionChains(self.driver)
+                    actions.move_to_element(next_btn).pause(0.2).click().perform()
+                except TimeoutException:
+                    logger.warning("No next page or next button not clickable after waiting.")
+                    break
                 except Exception as e:
-                    print(f"[!] No next page or failed to click next: {e}")
+                    logger.warning(f"Failed to click next: {e}", exc_info=True)
                     break
 
+        logger.info(f"Scraping completed. Total products: {len(all_products)}")
         return all_products
 
     def scrape(self, url: str):
@@ -212,7 +231,9 @@ class AmazonSeleniumScraper(BaseScraper):
         scrapers multiple pages for the given category/search results.
         Returns a list of all product dicts found across all pages.
         """
+        logger.info(f"Starting scrape for URL: {url}")
         return self.scrape_category(url)
 
     def close(self):
         self.driver.quit()
+        logger.info("Closed Selenium WebDriver.")
