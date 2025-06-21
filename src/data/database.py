@@ -207,6 +207,8 @@ def sanitize_for_json(obj):
             return None
         else:
             return float(obj)
+    elif isinstance(obj, pd.Timestamp):
+        return obj.isoformat()
     else:
         return obj
 

@@ -55,6 +55,16 @@ class DataPipeline:
                 database.save_analysis_trends(run_id, trend_type, source,
                                               trend if isinstance(trend, dict) else trend.to_dict())
         analysis_all = AnalysisEngine(df_clean)
+        # ========================
+        comparative = analysis_all.comparative_analysis()
+        comparative_path_csv = os.path.join(self.output_dir, "comparative_analysis.csv")
+        comparative_path_json = os.path.join(self.output_dir, "comparative_analysis.json")
+        comparative.to_csv(comparative_path_csv, index=False)
+        comparative.to_json(comparative_path_json, orient="records", indent=2)
+        logger.info(f"Comparative analysis exported to: {comparative_path_csv} and {comparative_path_json}")
+
+        logger.info(f"Analysis and storage in DB complete for run_id={run_id}.")
+        # =========================
         database.save_analysis_summary(run_id, "all", analysis_all.overall_report())
         for group_type in ['category', 'source']:
             group_stats = getattr(analysis_all.stats_engine, f'by_{group_type}')()

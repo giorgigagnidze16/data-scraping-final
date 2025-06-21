@@ -12,7 +12,7 @@ def main():
     try:
         logger.info("Starting pipeline orchestrator...")
         orchestrator = ScraperOrchestrator(scrapers_config_path="config/scrapers.yaml")
-        all_products = orchestrator.run_all()
+        all_products = orchestrator.run_all(4)
         logger.info(f"Scraping complete. {len(all_products)} products collected.")
         if not all_products:
             logger.error("No products scraped! Check your scrapers.")
