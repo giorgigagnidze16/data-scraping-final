@@ -7,4 +7,5 @@ amazon:
     ram: "/s?k=RAM"
     gadgets: "/s?k=gadgets"
   max_pages: 20
+  max_retries: 3
   delay: 1

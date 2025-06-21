@@ -70,6 +70,7 @@ class AmazonSeleniumScraper(BaseScraper):
     def __init__(self, config):
         options = Options()
         options.add_argument("--headless")
+        self.max_retries = config.get("max_retries", 3)
         self.driver = webdriver.Chrome(options=options)
         self.base_url = config['base_url']
         self.categories = config['categories']
@@ -96,20 +97,33 @@ class AmazonSeleniumScraper(BaseScraper):
                 "enter the characters as they are shown in the image" in src
         )
 
-    def fetch(self, url):
+    def fetch(self, url, retries=3):
         """
         loads the URL in the browser, waits for dynamic content, and handles CAPTCHA if needed.
         """
-        logger.info(f"Fetching URL: {url}")
-        self.driver.get(url)
-        time.sleep(random.uniform(self.delay, self.delay + 2))
-        try:
-            self.wait_for_products(timeout=12)
-        except Exception:
-            if self.is_captcha_page():
-                logger.warning("CAPTCHA detected. Use proxy/user-agent rotation or solve manually.")
-            else:
-                logger.error("Timed out waiting for product content.", exc_info=True)
+        retries = retries if retries is not None else self.max_retries
+        for attempt in range(1, retries + 1):
+            try:
+                logger.info(f"Fetching URL (attempt {attempt}): {url}")
+                self.driver.get(url)
+                time.sleep(random.uniform(self.delay, self.delay + 2))
+                self.wait_for_products(timeout=12)
+                return self.driver.page_source
+            except Exception as e:
+                if self.is_captcha_page():
+                    logger.warning("CAPTCHA detected. Use proxy/user-agent rotation or solve manually.")
+                    self.driver.save_screenshot(f"logs/captcha_{int(time.time())}.png")
+                    break
+                else:
+                    logger.error(f"Error fetching page on attempt {attempt}: {e}", exc_info=True)
+                    if attempt < retries:
+                        logger.info("Retrying fetch...")
+                        self.driver.quit()
+                        self.driver = self._init_driver()
+                        time.sleep(2)
+                    else:
+                        logger.error("Max fetch retries reached.")
+                        raise
         return self.driver.page_source
 
     def parse(self, html):
