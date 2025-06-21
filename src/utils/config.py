@@ -1,7 +1,8 @@
 import yaml
 
+
 class ConfigLoader:
-    def __init__(self, path="config/scrapers.yaml"):
+    def __init__(self, path):
         self.config = self.load_yaml(path)
 
     @staticmethod
@@ -9,5 +10,5 @@ class ConfigLoader:
         with open(path, 'r', encoding='utf-8') as f:
             return yaml.safe_load(f)
 
-    def get_site_config(self, site):
-        return self.config.get(site, {})
+    def get_config(self, conf):
+        return self.config.get(conf, {})
