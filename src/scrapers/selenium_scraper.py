@@ -57,6 +57,12 @@ def extract_price(node):
     return None
 
 
+agents = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 12_6_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15",
+]
+
+
 class AmazonSeleniumScraper(BaseScraper):
     """
     Selenium-based scraper for extracting product information from Amazon search or category pages.
@@ -68,17 +74,24 @@ class AmazonSeleniumScraper(BaseScraper):
     """
 
     def __init__(self, config):
-        options = Options()
-        options.add_argument("--headless")
+        self.user_agents = config.get("user_agents", agents)
         self.max_retries = config.get("max_retries", 3)
-        self.driver = webdriver.Chrome(options=options)
         self.base_url = config['base_url']
         self.categories = config['categories']
         self.max_pages = config['max_pages']
         self.delay = config['delay']
+        self.driver = self._init_driver()
         logger.info("AmazonSeleniumScraper initialized.")
 
-    def wait_for_products(self, timeout=10):
+    def _init_driver(self):
+        options = Options()
+        options.add_argument("--headless")
+        user_agent = random.choice(self.user_agents)
+        options.add_argument(f"user-agent={user_agent}")
+        logger.info(f"Selected User-Agent: {user_agent}")
+        return webdriver.Chrome(options=options)
+
+    def wait_for_products(self, timeout=20):
         """
         wait until product blocks are loaded.
         """
@@ -130,7 +143,7 @@ class AmazonSeleniumScraper(BaseScraper):
         """
         parses search results page and returns a list of product dicts.
         """
-        logger.info("Parsing HTML page for products.")
+        logger.debug("Parsing HTML page for products.")
         soup = BeautifulSoup(html, "html.parser")
         products = soup.select("div[data-component-type='s-search-result']")
         all_products = []
@@ -202,7 +215,7 @@ class AmazonSeleniumScraper(BaseScraper):
         for page in range(1, max_pages + 1):
             logger.info(f"Scraping Amazon page {page}: {self.driver.current_url}")
             try:
-                self.wait_for_products(timeout=12)
+                self.wait_for_products()
             except Exception as e:
                 if self.is_captcha_page():
                     logger.warning("CAPTCHA detected. Solve or rotate proxy/user-agent.", e)

@@ -1,5 +1,9 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from src.utils.logger import get_logger
+
+logger = get_logger("threaded-executor")
+
 
 def threaded_scrape_executor(
         scraper_cls,
@@ -27,12 +31,12 @@ def threaded_scrape_executor(
         scraper = scraper_cls(base_config)
         url = f"{url_prefix}{job_path}"
         try:
-            print(f"[{job_name}] Scraping {url}")
+            logger.info(f"[{job_name}] Scraping {url}")
             items = scraper.scrape(url)
-            print(f"[{job_name}] Done ({len(items)} items)")
+            logger.info(f"[{job_name}] Done ({len(items)} items)")
             return job_name, items
         except Exception as e:
-            print(f"[{job_name}] ERROR: {e}")
+            logger.error(f"[{job_name}] ERROR: {e}")
             return job_name, []
         finally:
             scraper.close()
