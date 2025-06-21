@@ -63,6 +63,72 @@ agents = [
 ]
 
 
+def clean_product_fields(prod):
+    p = prod.copy()
+    if isinstance(p.get('price'), str):
+        price_clean = re.sub(r'[^\d.,]', '', p['price'])
+        try:
+            p['price'] = float(price_clean.replace(',', ''))
+        except:
+            p['price'] = None
+    if 'rating' in p and p['rating'] is not None:
+        try:
+            p['rating'] = float(str(p['rating']).replace(',', '').strip())
+        except:
+            p['rating'] = None
+    if 'review_count' in p and p['review_count'] is not None:
+        review_str = str(p['review_count']).replace(',', '').strip()
+        try:
+            p['review_count'] = int(review_str)
+        except:
+            p['review_count'] = 0
+    return p
+
+
+def parse_product(product_html):
+    """
+    extracts data from a single search result page block
+    """
+    sg_col_inner = product_html.select_one("div.sg-col-inner")
+
+    title_tag = sg_col_inner.select_one("h2 span") if sg_col_inner else None
+    title = title_tag.get_text(strip=True) if title_tag else None
+
+    url_tag = sg_col_inner.select_one("h2 a") if sg_col_inner else None
+    if not url_tag:
+        url_tag = product_html.select_one("a[href*='/dp/']")
+    url = f"https://www.amazon.com{url_tag['href']}" if url_tag and url_tag.has_attr('href') else None
+
+    img_tag = sg_col_inner.select_one("img.s-image") if sg_col_inner else None
+    img_url = img_tag['src'] if img_tag else None
+
+    price = extract_price(sg_col_inner) if sg_col_inner else None
+    if not price:
+        price = extract_price(product_html)
+
+    rating = extract_rating(sg_col_inner) if sg_col_inner else None
+    if not rating:
+        rating = extract_rating(product_html)
+
+    review_cnt_tag = sg_col_inner.select_one(
+        "div[data-cy='reviews-block'] span.a-size-small.puis-normal-weight-text"
+    ) if sg_col_inner else None
+    if not review_cnt_tag and sg_col_inner:
+        review_cnt_tag = sg_col_inner.select_one("span.a-size-base.s-underline-text")
+    review_cnt = review_cnt_tag.get_text(strip=True).strip("()") if review_cnt_tag else None
+
+    product = {
+        'title': title,
+        'price': price,
+        'rating': rating,
+        'url': url,
+        'review_count': review_cnt,
+        'img_url': img_url
+    }
+
+    return clean_product_fields(product)
+
+
 class AmazonSeleniumScraper(BaseScraper):
     """
     Selenium-based scraper for extracting product information from Amazon search or category pages.
@@ -148,52 +214,11 @@ class AmazonSeleniumScraper(BaseScraper):
         products = soup.select("div[data-component-type='s-search-result']")
         all_products = []
         for product_html in products:
-            data = self.parse_product(product_html)
+            data = parse_product(product_html)
             if all(data.get(field) for field in data.keys()):
                 all_products.append(data)
         logger.info(f"Parsed {len(all_products)} valid products from page.")
         return all_products
-
-    def parse_product(self, product_html):
-        """
-        extracts data from a single search result page block
-        """
-        sg_col_inner = product_html.select_one("div.sg-col-inner")
-
-        title_tag = sg_col_inner.select_one("h2 span") if sg_col_inner else None
-        title = title_tag.get_text(strip=True) if title_tag else None
-
-        url_tag = sg_col_inner.select_one("h2 a") if sg_col_inner else None
-        if not url_tag:
-            url_tag = product_html.select_one("a[href*='/dp/']")
-        url = f"https://www.amazon.com{url_tag['href']}" if url_tag and url_tag.has_attr('href') else None
-
-        img_tag = sg_col_inner.select_one("img.s-image") if sg_col_inner else None
-        img_url = img_tag['src'] if img_tag else None
-
-        price = extract_price(sg_col_inner) if sg_col_inner else None
-        if not price:
-            price = extract_price(product_html)
-
-        rating = extract_rating(sg_col_inner) if sg_col_inner else None
-        if not rating:
-            rating = extract_rating(product_html)
-
-        review_cnt_tag = sg_col_inner.select_one(
-            "div[data-cy='reviews-block'] span.a-size-small.puis-normal-weight-text"
-        ) if sg_col_inner else None
-        if not review_cnt_tag and sg_col_inner:
-            review_cnt_tag = sg_col_inner.select_one("span.a-size-base.s-underline-text")
-        review_cnt = review_cnt_tag.get_text(strip=True).strip("()") if review_cnt_tag else None
-
-        return {
-            'title': title,
-            'price': price,
-            'rating': rating,
-            'url': url,
-            'review_count': review_cnt,
-            'img_url': img_url
-        }
 
     def scrape_category(self, category_url, max_pages=None, delay=None):
         """
