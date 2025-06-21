@@ -2,7 +2,7 @@ import pandas as pd
 
 from src.analysis.analysis_engine import AnalysisEngine
 from src.pipeline.data_pipeline import DataPipeline
-from src.pipeline.orchestrator import ScraperOrchestrator
+from src.pipeline.scraper_orchestrator import ScraperOrchestrator
 from src.utils.logger import get_logger
 
 logger = get_logger("main")

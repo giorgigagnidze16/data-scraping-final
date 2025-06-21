@@ -1,10 +1,11 @@
 import json
 import math
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
 import psycopg2
-from sqlalchemy import create_engine, Column, Integer, String, Float, UniqueConstraint
+from sqlalchemy import create_engine, Column, Integer, String, Float, UniqueConstraint, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -26,6 +27,7 @@ class ProductRaw(Base):
     review_count = Column(Integer)
     url = Column(String, nullable=True)
     img_url = Column(String)
+    scraped_at = Column(DateTime, nullable=True, default=datetime.utcnow())
     __table_args__ = (UniqueConstraint('url', name='uix_url_raw'),)
 
 
@@ -40,6 +42,7 @@ class Product(Base):
     review_count = Column(Integer)
     url = Column(String, nullable=False)
     img_url = Column(String)
+    scraped_at = Column(DateTime, nullable=True, default=datetime.utcnow())
     __table_args__ = (UniqueConstraint('url', name='uix_url'),)
 
 
@@ -160,6 +163,7 @@ def load_products(as_dataframe=True):
         return df
     return df.to_dict(orient='records')
 
+
 def convert_tuple_keys_to_str(obj):
     if isinstance(obj, dict):
         new_dict = {}
@@ -173,6 +177,7 @@ def convert_tuple_keys_to_str(obj):
     else:
         return obj
 
+
 def convert_for_json(obj):
     if isinstance(obj, pd.DataFrame):
         return obj.to_dict(orient="records")
@@ -182,6 +187,7 @@ def convert_for_json(obj):
         return [convert_for_json(i) for i in obj]
     else:
         return obj
+
 
 def sanitize_for_json(obj):
     """Recursively replace NaN, Inf, -Inf with None, and convert DataFrames to records."""
@@ -204,6 +210,7 @@ def sanitize_for_json(obj):
     else:
         return obj
 
+
 def save_analysis_summary(run_id, source, summary_json):
     conn = psycopg2.connect(**_db_params)
     cur = conn.cursor()
@@ -218,6 +225,7 @@ def save_analysis_summary(run_id, source, summary_json):
     conn.close()
     logger.info(f"Saved analysis_summary for source={source}, run_id={run_id}")
 
+
 def save_analysis_group_stats(run_id, group_type, group_value, source, stats_json):
     conn = psycopg2.connect(**_db_params)
     cur = conn.cursor()
@@ -230,6 +238,7 @@ def save_analysis_group_stats(run_id, group_type, group_value, source, stats_jso
     conn.close()
     logger.info(f"Saved analysis_group_stats for {group_type}={group_value}, source={source}")
 
+
 def save_analysis_trends(run_id, trend_type, source, trend_json):
     conn = psycopg2.connect(**_db_params)
     cur = conn.cursor()
@@ -241,6 +250,7 @@ def save_analysis_trends(run_id, trend_type, source, trend_json):
     cur.close()
     conn.close()
     logger.info(f"Saved analysis_trends for trend_type={trend_type}, source={source}")
+
 
 def generate_run_id():
     """Generate a new UUID for analysis run."""

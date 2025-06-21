@@ -1,7 +1,7 @@
 amazon:
-  delay: 1
-  max_pages: 20
-  max_retries: 3
+  delay: 2
+  max_pages: 10
+  max_retries: 5
   base_url: "https://www.amazon.com"
   categories:
     laptops: "/s?k=laptops"
@@ -9,6 +9,30 @@ amazon:
     gpus: "/s?k=gpu"
     ram: "/s?k=RAM"
     gadgets: "/s?k=gadgets"
+    kitchen: "/s?k=kitchen"
+    accessories: "/s?k=accessories"
+    shoes: "/s?k=shoes"
+    fragrance: "/s?k=fragrance"
+  user_agents:
+    - "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+    - "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Brave Chrome/126.0.0.0 Safari/537.36"
+    - "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) YandexBrowser/24.6.0.1177 Chrome/122.0.0.0 Safari/537.36"
+    - "Mozilla/5.0 (Macintosh; Intel Mac OS X 12_6_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15"
+    - "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/125.0.2535.67"
+    - "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    - "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Opera/110.0.0.0 Chrome/124.0.0.0 Safari/537.36"
+
+microcenter:
+  delay: 5
+  max_pages: 10
+  max_retries: 5
+  base_url: "https://www.microcenter.com"
+  categories:
+    laptops: "/category/4294967288/laptops-tablets"
+    gpus: "/category/4294966937/graphics-cards"
+    ram: "/category/4294966965/memory"
+    monitors: "/category/4294966896/monitors"
+    gadget: "/search/search_results.aspx?Ntt=gadget"
   user_agents:
     - "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
     - "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Brave Chrome/126.0.0.0 Safari/537.36"

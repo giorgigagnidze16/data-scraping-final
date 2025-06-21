@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Optional
+from datetime import datetime
 
 
 @dataclass
@@ -12,3 +13,4 @@ class Product:
     review_count: Optional[int]
     url: str
     img_url: Optional[str]
+    scraped_at: Optional[datetime]

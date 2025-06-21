@@ -9,7 +9,8 @@ CREATE TABLE IF NOT EXISTS public.products_raw (
     rating REAL,
     review_count INTEGER,
     url TEXT,
-    img_url TEXT
+    img_url TEXT,
+    scraped_at TIMESTAMP DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS public.products (
@@ -20,8 +21,9 @@ CREATE TABLE IF NOT EXISTS public.products (
     price REAL NOT NULL,
     rating REAL,
     review_count INTEGER,
-    url TEXT UNIQUE NOT NULL,
-    img_url TEXT
+    url TEXT NOT NULL,
+    img_url TEXT,
+    scraped_at TIMESTAMP DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS public.analysis_summary (
