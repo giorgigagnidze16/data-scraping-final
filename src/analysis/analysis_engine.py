@@ -1,0 +1,105 @@
+import numpy as np
+import pandas as pd
+
+from src.analysis.reports import ReportGenerator
+from src.analysis.statistics import StatisticsEngine
+from src.analysis.trends import TrendAnalyzer
+
+
+class AnalysisEngine:
+    """
+    orchestrator for all analysis modules.
+    Usage:
+        engine = AnalysisEngine(df)
+        engine.export_all("data_output")
+    """
+
+    def __init__(self, df):
+        self.df = df.copy()
+        self.feature_engineering()
+        self.stats_engine = StatisticsEngine(self.df)
+        self.trend_engine = TrendAnalyzer(self.df)
+        self._summary = self.stats_engine.summary()
+        self._by_source = self.stats_engine.by_source()
+        self._by_category = self.stats_engine.by_category()
+        self._nulls = self.stats_engine.null_summary()
+        self._uniques = self.stats_engine.unique_counts()
+        self._price_trend = self.trend_engine.price_trend_over_categories()
+        self._review_trend = self.trend_engine.review_trend()
+
+    def summary_statistics(self):
+        return self._summary
+
+    def nulls(self):
+        return self._nulls
+
+    def uniques(self):
+        return self._uniques
+
+    def by_source(self):
+        return self._by_source
+
+    def by_category(self):
+        return self._by_category
+
+    def trend_analysis(self):
+        return {
+            "price_trend": self._price_trend,
+            "review_trend": self._review_trend
+        }
+
+    def overall_report(self):
+        return {
+            "summary": self.summary_statistics(),
+            "nulls": self.nulls(),
+            "uniques": self.uniques(),
+            "by_source": self.by_source(),
+            "by_category": self.by_category(),
+            "trends": self.trend_analysis(),
+        }
+
+    def export_all(self, data_dir="data_output"):
+        reporter = ReportGenerator(
+            self.df,
+            stats={
+                "summary": self._summary,
+                "nulls": self._nulls,
+                "uniques": self._uniques,
+                "by_source": self._by_source,
+                "by_category": self._by_category,
+            },
+            trends={
+                "price_trend": self._price_trend,
+                "review_trend": self._review_trend,
+            }
+        )
+        reporter.to_json(f"{data_dir}/full_report.json")
+        reporter.to_csv(f"{data_dir}/products_clean_report.csv")
+        reporter.print_report()
+
+    def feature_engineering(self):
+        if not self.df.empty:
+            median = self.df['price'].median()
+            self.df['expensive'] = self.df['price'] > median
+
+            quantiles = [0.05, 0.25, 0.5, 0.75, 0.95]
+            price_quantiles = self.df['price'].quantile(quantiles)
+            for q, value in price_quantiles.items():
+                self.df[f'price_q_{int(q * 100)}'] = self.df['price'] > value
+
+            n_bins = min(4, len(self.df['price'].unique()))
+            if n_bins > 1:
+                self.df['price_group'] = pd.qcut(self.df['price'], q=n_bins,
+                                                 labels=['Low', 'Mid-Low', 'Mid-High', 'High'][:n_bins])
+            else:
+                self.df['price_group'] = 'Low'
+            self.df['price_flag'] = np.where(self.df['price'] < 50, 'very_low',
+                                             np.where(self.df['price'] > 5000, 'very_high', 'normal'))
+
+            q1 = self.df['price'].quantile(0.25)
+            q3 = self.df['price'].quantile(0.75)
+            iqr = q3 - q1
+            lower = q1 - 1.5 * iqr
+            upper = q3 + 1.5 * iqr
+            self.df['outlier'] = (self.df['price'] < lower) | (self.df['price'] > upper)
+        return self
