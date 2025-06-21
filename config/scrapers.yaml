@@ -8,12 +8,3 @@ amazon:
     gadgets: "/s?k=gadgets"
   max_pages: 20
   delay: 1
-
-ebay:
-  base_url: "https://www.ebay.com"
-  categories:
-    laptops: "/sch/i.html?_nkw=laptops"
-    monitors: "/sch/i.html?_nkw=monitors"
-    gpus: "/sch/i.html?_nkw=gpus"
-  max_pages: 10
-  delay: 3
