@@ -120,7 +120,7 @@ class AmazonSeleniumScraper(BaseScraper):
                 logger.info(f"Fetching URL (attempt {attempt}): {url}")
                 self.driver.get(url)
                 time.sleep(random.uniform(self.delay, self.delay + 2))
-                self.wait_for_products(timeout=12)
+                self.wait_for_products()
                 return self.driver.page_source
             except Exception as e:
                 if self.is_captcha_page():
