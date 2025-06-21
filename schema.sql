@@ -1,4 +1,6 @@
-CREATE TABLE IF NOT EXISTS products (
+SET search_path TO public;
+
+CREATE TABLE IF NOT EXISTS public.products (
     id SERIAL PRIMARY KEY,
     source VARCHAR(255),
     category VARCHAR(255),
