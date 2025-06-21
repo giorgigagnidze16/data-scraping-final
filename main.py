@@ -1,59 +1,47 @@
-import json
+from src.analysis.analysis_engine import AnalysisEngine
+from src.data.data_pipeline import DataPipeline
+from src.pipeline.orchestrator import ScraperOrchestrator
+from src.utils.logger import get_logger
 
-from src.data import database
-from src.scrapers.selenium_scraper import AmazonSeleniumScraper
-from src.utils.config import ConfigLoader
-from src.utils.executor import threaded_scrape_executor
-
-
-def run_amazon(config):
-    print("\n==== Amazon Scraper ====")
-    amazon_config = config.get_config('amazon')
-    categories = amazon_config['categories']
-    base_url = amazon_config['base_url']
-    return threaded_scrape_executor(
-        scraper_cls=AmazonSeleniumScraper,
-        base_config=amazon_config,
-        jobs=categories,
-        max_workers=len(categories),
-        url_prefix=base_url,
-    )
-
-
-def run_db(config):
-    db_cfg = ConfigLoader(config).get_config("database")
-
-    database.configure_engine(
-        host=db_cfg["host"],
-        port=db_cfg["port"],
-        user=db_cfg["user"],
-        password=db_cfg["password"],
-        dbname=db_cfg["dbname"]
-    )
-
-    database.init_db_with_sql("schema.sql")
+logger = get_logger("main")
 
 
 def main():
-    config = ConfigLoader("config/scrapers.yaml")
-    amazon_results = run_amazon(config)
-    print("\nAmazon Scraper done. Sample data:")
-    for cat, items in amazon_results.items():
-        print(f"  {cat}: {items[:2]}")
-    with open("amazon_results.json", "w", encoding="utf-8") as f:
-        json.dump(amazon_results, f, indent=2, ensure_ascii=False)
+    try:
+        logger.info("Starting pipeline orchestrator...")
+        orchestrator = ScraperOrchestrator(scrapers_config_path="config/scrapers.yaml")
+        all_products = orchestrator.run_all()
+        logger.info(f"Scraping complete. {len(all_products)} products collected.")
+        if not all_products:
+            logger.error("No products scraped! Check your scrapers.")
+            return
 
-    run_db("config/database.yaml")
+        logger.info("Running data pipeline...")
+        pipeline = DataPipeline(db_config_path="config/database.yaml")
+        df_clean = pipeline.run_pipeline(all_products)
 
-    all_products = []
-    for category, items in amazon_results.items():
-        for product in items:
-            product['source'] = 'amazon'
-            product['category'] = category
-            all_products.append(product)
+        logger.info(f"Cleaned DataFrame shape: {df_clean.shape}")
+        if df_clean.empty:
+            logger.error("Cleaned DataFrame is empty! Check data cleaning/processing.")
+            print(df_clean)
+            return
 
-    database.save_products(all_products)
-    print(f"\nSaved {len(all_products)} products to the database.")
+        logger.info("Exporting cleaned product data in all formats...")
+        import pandas as pd
+        pd.DataFrame(df_clean).to_csv("data_output/products_clean.csv", index=False)
+        pd.DataFrame(df_clean).to_json("data_output/products_clean.json", orient="records", force_ascii=False, indent=2)
+        pd.DataFrame(df_clean).to_excel("data_output/products_clean.xlsx", index=False)
+
+        logger.info("Running analysis and exporting reports...")
+        analysis = AnalysisEngine(pd.DataFrame(df_clean))
+        analysis.export_all(data_dir="data_output")
+
+        logger.info("All exports completed successfully.")
+        logger.info("Pipeline completed successfully!")
+
+    except Exception as e:
+        logger.exception("Pipeline failed due to an error:")
+        raise
 
 
 if __name__ == "__main__":
