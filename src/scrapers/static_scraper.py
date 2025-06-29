@@ -64,16 +64,13 @@ class MicroCenterStaticScraper(BaseScraper):
         return products
 
     def parse_product(self, card):
-        # Title and URL
         title_tag = card.select_one('.h2 a')
         title = title_tag.get_text(strip=True) if title_tag else None
         url = f"https://www.microcenter.com{title_tag['href']}" if title_tag and title_tag.has_attr('href') else None
 
-        # Image
         img_tag = card.select_one('.image2 img')
         img_url = img_tag['src'] if img_tag and img_tag.has_attr('src') else None
 
-        # Price
         price = None
         price_tag = card.select_one(".price_wrapper .price span[itemprop='price']")
         if price_tag:
@@ -85,7 +82,6 @@ class MicroCenterStaticScraper(BaseScraper):
                 except Exception:
                     price = None
         else:
-            # fallback: grab from any .price span
             price_tag = card.select_one(".price_wrapper .price")
             if price_tag:
                 price_txt = price_tag.get_text(strip=True)
@@ -114,7 +110,6 @@ class MicroCenterStaticScraper(BaseScraper):
         delay = delay or self.delay
 
         for page in range(1, max_pages + 1):
-            # Pagination: ?page=2 or &page=2 for search pages
             url = (
                 f"{category_url}&page={page}" if "search_results.aspx" in category_url and page > 1
                 else f"{category_url}?page={page}" if page > 1

@@ -131,7 +131,7 @@ def parse_product(product_html):
 
 class AmazonSeleniumScraper(BaseScraper):
     """
-    Selenium-based scraper for extracting product information from Amazon search or category pages.
+    Selenium scraper for extracting product information from Amazon search or category pages.
 
     Usage:
         scraper = AmazonSeleniumScraper(config)
@@ -183,9 +183,6 @@ class AmazonSeleniumScraper(BaseScraper):
         )
 
     def fetch(self, url, retries=3):
-        """
-        loads the URL in the browser, waits for dynamic content, and handles CAPTCHA if needed.
-        """
         retries = retries if retries is not None else self.max_retries
         for attempt in range(1, retries + 1):
             try:
@@ -218,9 +215,6 @@ class AmazonSeleniumScraper(BaseScraper):
         return self.driver.page_source
 
     def parse(self, html):
-        """
-        parses search results page and returns a list of product dicts.
-        """
         soup = BeautifulSoup(html, "html.parser")
         products = soup.select("div[data-component-type='s-search-result']")
         all_products = []
@@ -282,10 +276,6 @@ class AmazonSeleniumScraper(BaseScraper):
         return all_products
 
     def scrape(self, url: str):
-        """
-        scrapers multiple pages for the given category/search results.
-        Returns a list of all product dicts found across all pages.
-        """
         logger.info(f"Starting scrape for URL: {url}")
         return self.scrape_category(url)
 
