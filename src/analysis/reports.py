@@ -9,12 +9,24 @@ logger = get_logger("report")
 
 
 class ReportGenerator:
+    """
+    Generates, exports, and prints analysis reports in JSON, CSV,
+    and console formats for a given dataset and analysis results.
+    """
+
     def __init__(self, df: pd.DataFrame, stats, trends):
         self.df = df
         self.stats = stats
         self.trends = trends
 
     def to_json(self, filepath):
+        """
+        Export report as JSON.
+
+        Parameters:
+            filepath (str): Path to save the JSON report.
+        """
+
         def stringify_tuple_keys(obj):
             if isinstance(obj, dict):
                 return {str(k) if isinstance(k, tuple) else k: stringify_tuple_keys(v) for k, v in obj.items()}
@@ -34,10 +46,20 @@ class ReportGenerator:
         logger.info(f"Report saved as JSON: {filepath}")
 
     def to_csv(self, filepath):
+        """
+        Export dataframe as CSV.
+
+        Parameters:
+            filepath (str): Path to save the CSV file.
+        """
         self.df.to_csv(filepath, index=False)
         logger.info(f"DataFrame saved as CSV: {filepath}")
 
     def print_report(self):
+        """
+        Print report statistics to the console/log.
+        """
+
         def stringify_tuple_keys(obj):
             if isinstance(obj, dict):
                 return {str(k) if isinstance(k, tuple) else k: stringify_tuple_keys(v) for k, v in obj.items()}

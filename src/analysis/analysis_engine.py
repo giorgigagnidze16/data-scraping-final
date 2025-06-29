@@ -10,7 +10,9 @@ from src.analysis.trends import TrendAnalyzer
 
 class AnalysisEngine:
     """
-    orchestrator for all analysis modules.
+    Orchestrates all analysis modules for scraped data.
+    Applies feature engineering, runs statistics and trend analysis, and generates reports.
+
     Usage:
         engine = AnalysisEngine(df)
         engine.export_all("data_output")
@@ -30,27 +32,69 @@ class AnalysisEngine:
         self._review_trend = self.trend_engine.review_trend()
 
     def summary_statistics(self):
+        """
+        Returns the overall summary statistics of the data.
+
+        Returns:
+            dict: Descriptive statistics for all numeric columns.
+        """
         return self._summary
 
     def nulls(self):
+        """
+        Returns the number of null/missing values per column.
+
+        Returns:
+            dict: Null count per column.
+        """
         return self._nulls
 
     def uniques(self):
+        """
+        Returns the count of unique values per column.
+
+        Returns:
+            dict: Unique count per column.
+        """
         return self._uniques
 
     def by_source(self):
+        """
+        Returns grouped statistics by data source.
+
+        Returns:
+            dict: Descriptive statistics grouped by source.
+        """
         return self._by_source
 
     def by_category(self):
+        """
+        Returns grouped statistics by category.
+
+        Returns:
+            dict: Descriptive statistics grouped by category.
+        """
         return self._by_category
 
     def trend_analysis(self):
+        """
+        Returns trend analyses such as price and review trends.
+
+        Returns:
+            dict: Trend dataframes.
+        """
         return {
             "price_trend": self._price_trend,
             "review_trend": self._review_trend
         }
 
     def overall_report(self):
+        """
+        Returns a dictionary combining all key analyses.
+
+        Returns:
+            dict: Summary, nulls, uniques, group statistics, and trends.
+        """
         return {
             "summary": self.summary_statistics(),
             "nulls": self.nulls(),
@@ -61,6 +105,12 @@ class AnalysisEngine:
         }
 
     def export_all(self, data_dir="data_output"):
+        """
+        Exports the analysis and cleaned data to JSON and CSV, and prints report.
+
+        Parameters:
+            data_dir (str): Directory to save the outputs.
+        """
         reporter = ReportGenerator(
             self.df,
             stats={
@@ -80,6 +130,13 @@ class AnalysisEngine:
         reporter.print_report()
 
     def feature_engineering(self):
+        """
+        Applies feature engineering to the dataframe, including outlier detection,
+        price group flags, and quantile calculations.
+
+        Returns:
+            self: The updated AnalysisEngine instance.
+        """
         if not self.df.empty:
             median = self.df['price'].median()
             self.df['expensive'] = self.df['price'] > median
@@ -113,7 +170,14 @@ class AnalysisEngine:
     ):
         """
         Returns a DataFrame comparing each mutual category across sources
-        for the specified features (e.g., price, rating, review_count).
+        for the specified features.
+
+        Parameters:
+            features (tuple): Features to compare.
+            min_sources (int): Minimum number of sources for a category to be considered mutual.
+
+        Returns:
+            pd.DataFrame: Aggregated comparison statistics.
         """
         df = self.df
         categories_per_source = df.groupby('source')['category'].unique().to_dict()
