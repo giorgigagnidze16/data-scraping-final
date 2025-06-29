@@ -10,7 +10,10 @@ from src.utils.logger import get_logger
 
 logger = get_logger("microcenter-static")
 
+from src.scrapers.factory import ScraperFactory
 
+
+@ScraperFactory.register('microcenter')
 class MicroCenterStaticScraper(BaseScraper):
     """
     Static OOP scraper for Micro Center (category/search pages).

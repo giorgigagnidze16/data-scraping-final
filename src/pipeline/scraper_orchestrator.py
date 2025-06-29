@@ -1,7 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from src.scrapers.selenium_scraper import AmazonSeleniumScraper
-from src.scrapers.static_scraper import MicroCenterStaticScraper
+from src.scrapers.factory import ScraperFactory
 from src.utils.config import ConfigLoader
 from src.utils.executor import threaded_scrape_executor
 from src.utils.logger import get_logger
@@ -12,13 +11,14 @@ logger = get_logger("orchestrator")
 class ScraperOrchestrator:
     def __init__(self, scrapers_config_path):
         self.scrapers_config = ConfigLoader(scrapers_config_path)
-        self.scraper_classes = {
-            "amazon": AmazonSeleniumScraper,
-            "microcenter": MicroCenterStaticScraper
-        }
+        self.scraper_names = ScraperFactory.available_scrapers()
 
-    def _run_scraper(self, name, scraper_cls):
+    def _run_scraper(self, name):
         config = self.scrapers_config.get_config(name)
+        scraper_cls = ScraperFactory._registry.get(name)
+        if not scraper_cls:
+            logger.error(f"Scraper '{name}' not registered!")
+            return []
         categories = config['categories']
         base_url = config['base_url']
         logger.info(f"Running {name} scraper...")
@@ -42,8 +42,8 @@ class ScraperOrchestrator:
         all_products = []
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = [
-                executor.submit(self._run_scraper, name, scraper_cls)
-                for name, scraper_cls in self.scraper_classes.items()
+                executor.submit(self._run_scraper, name)
+                for name in self.scraper_names
             ]
             for future in as_completed(futures):
                 try:

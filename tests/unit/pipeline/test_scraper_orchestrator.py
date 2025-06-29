@@ -1,6 +1,10 @@
 from tests.fixtures.pipeline.scraper_orchestrator_fixtures import mock_config, patched_config_loader, \
     patched_threaded_scrape_executor
 
+from src.scrapers.factory import ScraperFactory
+assert 'amazon' in ScraperFactory.available_scrapers(), ScraperFactory.available_scrapers()
+assert 'microcenter' in ScraperFactory.available_scrapers(), ScraperFactory.available_scrapers()
+
 
 def test_run_scraper_single(patched_config_loader, patched_threaded_scrape_executor):
     from src.pipeline.scraper_orchestrator import ScraperOrchestrator
@@ -9,7 +13,7 @@ def test_run_scraper_single(patched_config_loader, patched_threaded_scrape_execu
         "monitors": [{"title": "B", "price": 2}],
     }
     orchestrator = ScraperOrchestrator(scrapers_config_path="dummy.yaml")
-    result = orchestrator._run_scraper("amazon", orchestrator.scraper_classes["amazon"])
+    result = orchestrator._run_scraper("amazon")
     assert isinstance(result, list)
     assert result[0]["source"] == "amazon"
     assert result[0]["category"] == "laptops"
@@ -30,8 +34,11 @@ def test_run_all(patched_config_loader, patched_threaded_scrape_executor):
 
 def test_scraper_exception_handling(patched_config_loader, patched_threaded_scrape_executor):
     from src.pipeline.scraper_orchestrator import ScraperOrchestrator
-    def side_effect(**kwargs):
-        if kwargs.get("scraper_cls").__name__ == "AmazonSeleniumScraper":
+    # Accept both args and kwargs to be robust
+    def side_effect(*args, **kwargs):
+        # args: (scraper_cls, base_config, jobs, max_workers, url_prefix)
+        scraper_cls = kwargs.get("scraper_cls") or (args[0] if args else None)
+        if scraper_cls and scraper_cls.__name__ == "AmazonSeleniumScraper":
             raise Exception("Scraper failed")
         return {"desktops": [{"title": "B"}]}
 

@@ -128,7 +128,9 @@ def parse_product(product_html):
 
     return clean_product_fields(product)
 
+from src.scrapers.factory import ScraperFactory
 
+@ScraperFactory.register('amazon')
 class AmazonSeleniumScraper(BaseScraper):
     """
     Selenium scraper for extracting product information from Amazon search or category pages.
