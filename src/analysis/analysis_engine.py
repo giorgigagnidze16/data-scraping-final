@@ -116,7 +116,6 @@ class AnalysisEngine:
         for the specified features (e.g., price, rating, review_count).
         """
         df = self.df
-        # Find mutual categories
         categories_per_source = df.groupby('source')['category'].unique().to_dict()
         all_cats = sum([list(cats) for cats in categories_per_source.values()], [])
         mutual_cats = [cat for cat, count in Counter(all_cats).items() if count >= min_sources]

@@ -76,7 +76,7 @@ class TestReportGenerator(unittest.TestCase):
             filepath = tmp.name
         try:
             self.report.to_csv(filepath)
-            df_loaded = pd.read_csv(filepath, parse_dates=["date"])  # <--- FIXED
+            df_loaded = pd.read_csv(filepath, parse_dates=["date"])
             pd.testing.assert_frame_equal(df_loaded, self.df)
             mock_logger.info.assert_any_call(f"DataFrame saved as CSV: {filepath}")
         finally:
