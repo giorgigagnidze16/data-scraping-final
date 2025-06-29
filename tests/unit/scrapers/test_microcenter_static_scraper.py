@@ -2,8 +2,8 @@ from unittest.mock import patch, MagicMock
 import pytest
 
 from src.scrapers.static_scraper import MicroCenterStaticScraper
-from tests.fixtures.microcenter_html import sample_microcenter_product_html
-from tests.fixtures.microcenter_configs import microcenter_config
+from tests.fixtures.scraper.microcenter_html import sample_microcenter_product_html
+from tests.fixtures.scraper.microcenter_configs import microcenter_config
 
 def test_parse_returns_all_products(microcenter_config, sample_microcenter_product_html):
     scraper = MicroCenterStaticScraper(microcenter_config)

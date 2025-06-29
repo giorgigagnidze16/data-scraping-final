@@ -1,8 +1,8 @@
 from unittest.mock import patch, MagicMock
 
 from src.scrapers.selenium_scraper import AmazonSeleniumScraper
-from tests.fixtures.amazon_configs import amazon_config
-from tests.fixtures.amazon_html import sample_amazon_product_html
+from tests.fixtures.scraper.amazon_configs import amazon_config
+from tests.fixtures.scraper.amazon_html import sample_amazon_product_html
 
 
 @patch("src.scrapers.selenium_scraper.webdriver.Chrome")
