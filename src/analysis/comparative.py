@@ -1,12 +1,14 @@
-import pandas as pd
 from collections import Counter
+
+import pandas as pd
+
 
 class ComparativeAnalyzer:
     @staticmethod
     def mutual_category_comparison(
-        df: pd.DataFrame,
-        features=('price', 'rating', 'review_count'),
-        min_sources=2
+            df: pd.DataFrame,
+            features=('price', 'rating', 'review_count'),
+            min_sources=2
     ):
         categories_per_source = df.groupby('source')['category'].unique().to_dict()
         all_cats = sum([list(cats) for cats in categories_per_source.values()], [])
