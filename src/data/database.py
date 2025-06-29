@@ -1,8 +1,6 @@
 import json
-import math
 from datetime import datetime
 
-import numpy as np
 import pandas as pd
 import psycopg2
 from sqlalchemy import create_engine, Column, Integer, String, Float, UniqueConstraint, DateTime
@@ -10,6 +8,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 from src.utils.logger import get_logger
+from src.utils.utils import sanitize_db_for_json
 
 logger = get_logger("database")
 
@@ -189,35 +188,11 @@ def convert_for_json(obj):
         return obj
 
 
-def sanitize_for_json(obj):
-    """Recursively replace NaN, Inf, -Inf with None, and convert DataFrames to records."""
-    if isinstance(obj, pd.DataFrame):
-        return sanitize_for_json(obj.to_dict(orient="records"))
-    elif isinstance(obj, dict):
-        return {k: sanitize_for_json(v) for k, v in obj.items()}
-    elif isinstance(obj, list):
-        return [sanitize_for_json(i) for i in obj]
-    elif isinstance(obj, float):
-        if math.isnan(obj) or math.isinf(obj):
-            return None
-        else:
-            return obj
-    elif isinstance(obj, (np.floating, np.integer)):
-        if np.isnan(obj) or np.isinf(obj):
-            return None
-        else:
-            return float(obj)
-    elif isinstance(obj, pd.Timestamp):
-        return obj.isoformat()
-    else:
-        return obj
-
-
 def save_analysis_summary(run_id, source, summary_json):
     conn = psycopg2.connect(**_db_params)
     cur = conn.cursor()
     summary_json = convert_tuple_keys_to_str(summary_json)
-    summary_json = sanitize_for_json(summary_json)
+    summary_json = sanitize_db_for_json(summary_json)
     cur.execute(
         "INSERT INTO analysis_summary (run_id, source, summary_json) VALUES (%s, %s, %s)",
         (run_id, source, json.dumps(summary_json))

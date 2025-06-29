@@ -7,7 +7,7 @@ from unittest.mock import patch, mock_open
 import numpy as np
 import pandas as pd
 
-from src.analysis.reports import ReportGenerator, sanitize_for_json
+from src.analysis.reports import ReportGenerator, sanitize_reports_for_json
 
 
 class TestReportGenerator(unittest.TestCase):
@@ -32,11 +32,11 @@ class TestReportGenerator(unittest.TestCase):
         self.report = ReportGenerator(self.df, self.stats, self.trends)
 
     def test_sanitize_for_json(self):
-        self.assertEqual(sanitize_for_json(np.int32(5)), 5)
-        self.assertEqual(sanitize_for_json(np.float32(2.5)), 2.5)
-        self.assertEqual(sanitize_for_json(np.array([1, 2, 3])), [1, 2, 3])
-        self.assertEqual(sanitize_for_json(pd.Timestamp("2024-06-01")), "2024-06-01T00:00:00")
-        self.assertEqual(sanitize_for_json([np.int32(2), np.float64(3.5)]), [2, 3.5])
+        self.assertEqual(sanitize_reports_for_json(np.int32(5)), 5)
+        self.assertEqual(sanitize_reports_for_json(np.float32(2.5)), 2.5)
+        self.assertEqual(sanitize_reports_for_json(np.array([1, 2, 3])), [1, 2, 3])
+        self.assertEqual(sanitize_reports_for_json(pd.Timestamp("2024-06-01")), "2024-06-01T00:00:00")
+        self.assertEqual(sanitize_reports_for_json([np.int32(2), np.float64(3.5)]), [2, 3.5])
 
     def test_stringify_tuple_keys(self):
         def stringify_tuple_keys(obj):

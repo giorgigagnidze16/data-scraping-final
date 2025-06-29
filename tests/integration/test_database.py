@@ -49,7 +49,7 @@ def test_utils_convert_for_json():
 
 def test_utils_sanitize_for_json():
     obj = {"a": float("nan"), "b": float("inf"), "c": np.nan, "d": pd.Timestamp("2024-06-29")}
-    cleaned = database.sanitize_for_json(obj)
+    cleaned = database.sanitize_db_for_json(obj)
     assert cleaned["a"] is None and cleaned["b"] is None and cleaned["c"] is None
     assert isinstance(cleaned["d"], str) and cleaned["d"].startswith("2024-06-29")
 
