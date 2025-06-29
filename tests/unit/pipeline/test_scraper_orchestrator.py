@@ -34,9 +34,7 @@ def test_run_all(patched_config_loader, patched_threaded_scrape_executor):
 
 def test_scraper_exception_handling(patched_config_loader, patched_threaded_scrape_executor):
     from src.pipeline.scraper_orchestrator import ScraperOrchestrator
-    # Accept both args and kwargs to be robust
     def side_effect(*args, **kwargs):
-        # args: (scraper_cls, base_config, jobs, max_workers, url_prefix)
         scraper_cls = kwargs.get("scraper_cls") or (args[0] if args else None)
         if scraper_cls and scraper_cls.__name__ == "AmazonSeleniumScraper":
             raise Exception("Scraper failed")

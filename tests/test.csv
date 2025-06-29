@@ -1,0 +1,4 @@
+title,price,url,rating,review_count,source,category
+A,10.0,u1,4.5,20,amazon,laptops
+B,-3.0,u3,,0,etsy,other
+C,1000000.0,u4,2.0,5,shop,gadgets

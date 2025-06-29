@@ -1,13 +1,15 @@
 import os
+from datetime import datetime
+import json
 
 from src.analysis.analysis_engine import AnalysisEngine
 from src.data import database
 from src.data.processors import ProductDataProcessor
 from src.utils.config import ConfigLoader
 from src.utils.logger import get_logger
+from src.utils.utils import sanitize_db_for_json, convert_tuple_keys_to_str
 
 logger = get_logger("pipeline")
-
 
 class DataPipeline:
     def __init__(self, db_config_path, schema_path="schema.sql", output_dir="data_output"):
@@ -40,6 +42,12 @@ class DataPipeline:
         return df_clean
 
     def analyze_and_store(self, df_clean, run_id):
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        processed_dir = os.path.join(self.output_dir, "processed")
+        reports_dir = os.path.join(self.output_dir, "reports")
+        os.makedirs(processed_dir, exist_ok=True)
+        os.makedirs(reports_dir, exist_ok=True)
+
         logger.info("Starting analysis and storing analysis results in DB...")
         for source in df_clean['source'].unique():
             df_source = df_clean[df_clean['source'] == source]
@@ -56,11 +64,24 @@ class DataPipeline:
                                               trend if isinstance(trend, dict) else trend.to_dict())
         analysis_all = AnalysisEngine(df_clean)
         comparative = analysis_all.comparative_analysis()
-        comparative_path_csv = os.path.join(self.output_dir, "comparative_analysis.csv")
-        comparative_path_json = os.path.join(self.output_dir, "comparative_analysis.json")
+
+        products_clean_csv = os.path.join(processed_dir, f"products_clean_{timestamp}.csv")
+        products_clean_json = os.path.join(processed_dir, f"products_clean_{timestamp}.json")
+        df_clean.to_csv(products_clean_csv, index=False)
+        df_clean.to_json(products_clean_json, orient="records", indent=2)
+        logger.info(f"Processed products exported to: {products_clean_csv} and {products_clean_json}")
+
+        comparative_path_csv = os.path.join(reports_dir, f"comparative_analysis_{timestamp}.csv")
+        comparative_path_json = os.path.join(reports_dir, f"comparative_analysis_{timestamp}.json")
         comparative.to_csv(comparative_path_csv, index=False)
         comparative.to_json(comparative_path_json, orient="records", indent=2)
         logger.info(f"Comparative analysis exported to: {comparative_path_csv} and {comparative_path_json}")
+
+        full_report = analysis_all.overall_report()
+        full_report_path = os.path.join(reports_dir, f"full_report_{timestamp}.json")
+        with open(full_report_path, "w", encoding="utf-8") as f:
+            json.dump(convert_tuple_keys_to_str(sanitize_db_for_json(full_report)), f, indent=2)
+        logger.info(f"Full report exported to: {full_report_path}")
 
         logger.info(f"Analysis and storage in DB complete for run_id={run_id}.")
         database.save_analysis_summary(run_id, "all", analysis_all.overall_report())

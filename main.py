@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pandas as pd
 
 from src.analysis.analysis_engine import AnalysisEngine
@@ -36,9 +38,11 @@ def main():
             return
 
         logger.info("Exporting cleaned product data in all formats...")
-        pd.DataFrame(df_clean).to_csv("data_output/products_clean.csv", index=False)
-        pd.DataFrame(df_clean).to_json("data_output/products_clean.json", orient="records", force_ascii=False, indent=2)
-        pd.DataFrame(df_clean).to_excel("data_output/products_clean.xlsx", index=False)
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+        pd.DataFrame(df_clean).to_csv(f"data_output/raw/{timestamp}-products_clean.csv", index=False)
+        pd.DataFrame(df_clean).to_json(f"data_output/raw/{timestamp}-products_clean.json", orient="records", force_ascii=False, indent=2)
+        pd.DataFrame(df_clean).to_excel(f"data_output/raw/{timestamp}-products_clean.xlsx", index=False)
 
         logger.info("Running analysis and exporting reports...")
         analysis = AnalysisEngine(pd.DataFrame(df_clean))

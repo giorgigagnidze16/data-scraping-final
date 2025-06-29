@@ -34,5 +34,9 @@ def test_pipeline_end_to_end(
     pipeline = DataPipeline(config_file, schema_path=schema_file, output_dir=output_dir)
     df_clean = pipeline.run_pipeline(products)
     assert not df_clean.empty
-    assert os.path.exists(os.path.join(output_dir, "comparative_analysis.csv"))
-    assert os.path.exists(os.path.join(output_dir, "comparative_analysis.json"))
+
+    reports_dir = os.path.join(output_dir, "reports")
+    csv_files = [f for f in os.listdir(reports_dir) if f.startswith("comparative_analysis_") and f.endswith(".csv")]
+    json_files = [f for f in os.listdir(reports_dir) if f.startswith("comparative_analysis_") and f.endswith(".json")]
+    assert csv_files, f"No comparative_analysis_*.csv found in {reports_dir}"
+    assert json_files, f"No comparative_analysis_*.json found in {reports_dir}"
