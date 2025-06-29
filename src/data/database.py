@@ -208,7 +208,7 @@ def save_analysis_group_stats(run_id, group_type, group_value, source, stats_jso
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO analysis_group_stats (run_id, group_type, group_value, source, stats_json) VALUES (%s, %s, %s, %s, %s)",
-        (run_id, group_type, group_value, source, json.dumps(stats_json))
+        (run_id, group_type, group_value, source, json.dumps(sanitize_db_for_json(stats_json)))
     )
     conn.commit()
     cur.close()
@@ -221,7 +221,7 @@ def save_analysis_trends(run_id, trend_type, source, trend_json):
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO analysis_trends (run_id, trend_type, source, trend_json) VALUES (%s, %s, %s, %s)",
-        (run_id, trend_type, source, json.dumps(trend_json))
+        (run_id, trend_type, source, json.dumps(sanitize_db_for_json(trend_json)))
     )
     conn.commit()
     cur.close()

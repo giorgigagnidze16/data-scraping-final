@@ -12,6 +12,7 @@ class ScraperOrchestrator:
     def __init__(self, scrapers_config_path):
         self.scrapers_config = ConfigLoader(scrapers_config_path)
         self.scraper_names = ScraperFactory.available_scrapers()
+        logger.info(f"Available scrapers '{self.scraper_names}'")
 
     def _run_scraper(self, name):
         config = self.scrapers_config.get_config(name)
