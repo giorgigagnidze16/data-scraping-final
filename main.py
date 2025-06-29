@@ -5,6 +5,13 @@ from src.pipeline.data_pipeline import DataPipeline
 from src.pipeline.scraper_orchestrator import ScraperOrchestrator
 from src.utils.logger import get_logger
 
+# ======================================================================
+# ===============<<<<<>>>>> (MUST INCLUDE) <<<<<>>>>>===================
+from src.scrapers.selenium_scraper import AmazonSeleniumScraper
+from src.scrapers.static_scraper import MicroCenterStaticScraper
+# ===============<<<<<>>>>> (MUST INCLUDE) <<<<<>>>>>===================
+# ======================================================================
+
 logger = get_logger("main")
 
 
