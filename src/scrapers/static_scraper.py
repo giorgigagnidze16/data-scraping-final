@@ -18,6 +18,7 @@ class MicroCenterStaticScraper(BaseScraper):
     """
     Static OOP scraper for Micro Center (category/search pages).
     """
+    is_scrapy = False
 
     def __init__(self, config):
         self.user_agents = config.get("user_agents", [])

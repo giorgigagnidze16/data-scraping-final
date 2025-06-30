@@ -140,6 +140,8 @@ class AmazonSeleniumScraper(BaseScraper):
         data = scraper.scrape(category_url)  #  base class method
         scraper.close()
     """
+    is_scrapy = False
+
 
     def __init__(self, config):
         self.user_agents = config.get("user_agents", agents)
