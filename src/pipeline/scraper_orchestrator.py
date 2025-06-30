@@ -1,4 +1,4 @@
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from src.scrapers.factory import ScraperFactory
 from src.utils.config import ConfigLoader
@@ -23,6 +23,23 @@ class ScraperOrchestrator:
         categories = config['categories']
         base_url = config['base_url']
         logger.info(f"Running {name} scraper...")
+
+        if getattr(scraper_cls, "is_scrapy", False):
+            urls = [base_url + v for v in categories.values()]
+            logger.info(f"[ALL CATEGORIES] Scraping {urls} with Scrapy (main thread)...")
+            try:
+                items = scraper_cls(config).scrape(urls)
+                for prod in items:
+                    prod['source'] = name
+                    if 'category' not in prod or not prod['category']:
+                        prod['category'] = next((k for k, v in categories.items() if v in (prod.get('url') or '')),
+                                                None)
+                logger.info(f"{name} Scrapy scraper finished with {len(items)} products.")
+                return items
+            except Exception as e:
+                logger.error(f"Scrapy scraper '{name}' failed: {e}", exc_info=True)
+                return []
+
         results = threaded_scrape_executor(
             scraper_cls=scraper_cls,
             base_config=config,
@@ -41,12 +58,13 @@ class ScraperOrchestrator:
 
     def run_all(self, max_workers=2):
         all_products = []
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = [
-                executor.submit(self._run_scraper, name)
-                for name in self.scraper_names
-            ]
-            for future in as_completed(futures):
+        scraper_futures = []
+        with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            for name in self.scraper_names:
+                scraper_futures.append(
+                    executor.submit(self._run_scraper, name)
+                )
+            for future in as_completed(scraper_futures):
                 try:
                     all_products.extend(future.result())
                 except Exception as e:
