@@ -13,7 +13,6 @@ from src.data.processors import ProductDataProcessor
 
 
 def show_table(df, n=10, tail=False):
-    """Print the first or last n rows of a DataFrame, nicely formatted."""
     if df.empty:
         print("No data found.")
         return
@@ -45,12 +44,7 @@ def show_columns(clean=True):
     print("Columns:", ", ".join(df.columns))
 
 
-
 def filter_products(column, op_str, value, clean=True, n=20):
-    """
-    Filter products by column and operator, supports ==, !=, >, <, >=, <=, contains, not contains.
-    Example: filter_products('rating', '>=', 4.5)
-    """
     df = load_products() if clean else load_products_raw()
     if column not in df.columns:
         print(f"Column '{column}' not found.")
@@ -91,7 +85,6 @@ def filter_products(column, op_str, value, clean=True, n=20):
 
 
 def filter_price(min_price=None, max_price=None, clean=True):
-    """Show products within a price range."""
     df = load_products() if clean else load_products_raw()
     if min_price is not None:
         df = df[df['price'] >= float(min_price)]
@@ -100,11 +93,7 @@ def filter_price(min_price=None, max_price=None, clean=True):
     show_table(df, n=min(20, len(df)))
 
 
-
 def export_products(file, filetype="csv", clean=True, **filters):
-    """
-    Export products (clean/raw) as csv/json/xlsx, optionally filtered.
-    """
     df = load_products() if clean else load_products_raw()
     for col, val in filters.items():
         if col in df.columns and val:
@@ -122,7 +111,6 @@ def export_products(file, filetype="csv", clean=True, **filters):
 
 
 def data_quality_report(clean=True):
-    """Print data quality report."""
     df = load_products() if clean else load_products_raw()
     processor = ProductDataProcessor(df)
     processor.clean_and_validate()
@@ -130,7 +118,6 @@ def data_quality_report(clean=True):
     print("=== Data Quality Report ===")
     for k, v in report.items():
         print(f"{k:20}: {v}")
-
 
 
 def fig_to_base64(fig):
@@ -142,13 +129,133 @@ def fig_to_base64(fig):
     return img_base64
 
 
+
+def show_statistical_summary(clean=True):
+    df = load_products() if clean else load_products_raw()
+    engine = AnalysisEngine(df)
+    stats = engine.summary_statistics()
+    print("\n=== Statistical Summary ===")
+    print(pd.DataFrame(stats))
+
+
+def show_grouped_summary(by="category", clean=True):
+    df = load_products() if clean else load_products_raw()
+    analysis = AnalysisEngine(df)
+    if by == "category":
+        stats = analysis.by_category()
+        title = "=== Summary by Category ==="
+    elif by == "source":
+        stats = analysis.by_source()
+        title = "=== Summary by Source ==="
+    else:
+        print("Invalid group by option.")
+        return
+
+    print(title)
+    if isinstance(stats, dict):
+        if all(isinstance(v, dict) for v in stats.values()):
+            df_stats = pd.DataFrame.from_dict(stats, orient='index')
+            print(df_stats)
+        else:
+            df_stats = pd.DataFrame(list(stats.items()), columns=[by, 'value'])
+            print(df_stats)
+    else:
+        print(stats)
+
+
+def plot_distribution(column="price", clean=True):
+    df = load_products() if clean else load_products_raw()
+    if column not in df.columns:
+        print(f"Column '{column}' not found.")
+        return
+    plt.figure(figsize=(7, 4))
+    sns.histplot(df[column].dropna(), bins=40, kde=True)
+    plt.title(f"{column.capitalize()} Distribution")
+    plt.xlabel(column.capitalize())
+    plt.ylabel("Count")
+    plt.tight_layout()
+    plt.show()
+
+
+def show_trends(clean=True):
+    df = load_products() if clean else load_products_raw()
+    engine = AnalysisEngine(df)
+    trends = engine.trend_analysis()
+    pt = trends.get('price_trend')
+    if isinstance(pt, pd.DataFrame) and not pt.empty:
+        plt.figure(figsize=(8, 4))
+        sns.lineplot(
+            data=pt,
+            x='category', y='price', hue='source', marker="o"
+        )
+        plt.title("Average Price by Category & Source")
+        plt.xticks(rotation=30)
+        plt.tight_layout()
+        plt.show()
+    rt = trends.get('review_trend')
+    if isinstance(rt, pd.DataFrame) and not rt.empty:
+        plt.figure(figsize=(8, 4))
+        sns.lineplot(
+            data=rt,
+            x='category', y='review_count', hue='source', marker="o"
+        )
+        plt.title("Average Review Count by Category & Source")
+        plt.xticks(rotation=30)
+        plt.tight_layout()
+        plt.show()
+
+
+def show_comparative_analysis(
+    clean=True, features=None, min_sources=2, top_n_categories=7, plot=True
+):
+    """
+    Advanced comparative analysis: clear grouped barplots of mean values.
+    """
+    import numpy as np
+    df = load_products() if clean else load_products_raw()
+    engine = AnalysisEngine(df)
+    features = features or ('price', 'rating', 'review_count')
+    comp = engine.comparative_analysis(features=features, min_sources=min_sources)
+
+    top_categories = (
+        comp.groupby('category')['count'].sum().sort_values(ascending=False)
+        .head(top_n_categories).index
+    )
+    comp = comp[comp['category'].isin(top_categories)]
+
+    print("\n=== Advanced Comparative Analysis (Top Categories) ===")
+    print(comp.head(top_n_categories * 3).to_string(index=False))
+
+    if not plot:
+        return
+
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+
+    for feat in features:
+        if feat in df.columns and df['category'].nunique() <= 10:
+            plt.figure(figsize=(10, 5))
+            sns.stripplot(
+                data=df[df['category'].isin(top_categories)],
+                x="category", y=feat, hue="source", dodge=True, alpha=0.5, size=4
+            )
+            plt.title(f"{feat.capitalize()} Distribution by Category & Source")
+            plt.xlabel("Category")
+            plt.ylabel(feat.capitalize())
+            plt.xticks(rotation=20)
+            plt.legend(title="Source")
+            plt.tight_layout()
+            plt.show()
+
+
 def generate_html_report(outfile="data_output/report.html", clean=True):
-    """Generate a modern, mobile-friendly Bootstrap HTML report with colors and subtle effects."""
     df = load_products() if clean else load_products_raw()
     analysis = AnalysisEngine(df)
     stats = analysis.summary_statistics()
     nulls = analysis.nulls()
     uniques = analysis.uniques()
+    trends = analysis.trend_analysis()
+    comparative = analysis.comparative_analysis(features=['price', 'rating', 'review_count'])
 
     def shorten_url(u, max_len=60):
         if isinstance(u, str) and len(u) > max_len:
@@ -208,6 +315,7 @@ def generate_html_report(outfile="data_output/report.html", clean=True):
             .table-responsive {
                 margin-bottom: 1.1rem;
                 border-radius: 8px;
+                overflow-x: auto;
             }
             .table {
                 background: #fff;
@@ -273,7 +381,6 @@ def generate_html_report(outfile="data_output/report.html", clean=True):
         html += pd.DataFrame(list(uniques.items()), columns=['Column', 'Unique Count']).to_html(
             classes="table table-hover table-bordered", index=False, border=0)
         html += '</div>'
-
     html += '''
     <div class="stat-title"><h2>Sample Data</h2></div>
     <div class="table-responsive">
@@ -285,8 +392,7 @@ def generate_html_report(outfile="data_output/report.html", clean=True):
     '''
     for _, row in sample_df.iterrows():
         html += "<tr>" + "".join(
-            [f"<td style='max-width:150px; overflow-x:auto;'>{cell if not pd.isnull(cell) else ''}</td>" for cell in
-             row]
+            [f"<td style='max-width:150px; overflow-x:auto;'>{cell if not pd.isnull(cell) else ''}</td>" for cell in row]
         ) + "</tr>"
     html += '''
             </tbody>
@@ -304,12 +410,49 @@ def generate_html_report(outfile="data_output/report.html", clean=True):
         img_base64 = fig_to_base64(fig)
         html += f'<img src="data:image/png;base64,{img_base64}" class="img-fluid mb-4" style="max-width:650px;"><br>'
 
+    # --- Comparative Analysis (Multiple Features) ---
+    if isinstance(comparative, pd.DataFrame) and not comparative.empty:
+        feature_labels = {
+            "price": "Price", "rating": "Rating", "review_count": "Review Count"
+        }
+        for feat in ["price", "rating", "review_count"]:
+            col = f'avg_{feat}'
+            if col in comparative.columns:
+                fig, ax = plt.subplots(figsize=(8, 4))
+                sns.barplot(data=comparative, x="category", y=col, hue="source", ax=ax)
+                ax.set_title(f"Avg {feature_labels.get(feat, feat.capitalize())} by Category & Source")
+                ax.set_xlabel("Category")
+                ax.set_ylabel(f"Avg {feature_labels.get(feat, feat.capitalize())}")
+                plt.xticks(rotation=25)
+                html += f'<div class="stat-title"><h2>Comparative Analysis: Avg {feature_labels.get(feat, feat.capitalize())} by Category & Source</h2></div>'
+                img_base64 = fig_to_base64(fig)
+                html += f'<img src="data:image/png;base64,{img_base64}" class="img-fluid mb-4" style="max-width:650px;"><br>'
+
+        # Full comparative stats table
+        html += '<div class="stat-title"><h2>Comparative Stats Table</h2></div>'
+        html += '<div class="table-responsive">'
+        html += comparative.to_html(classes="table table-striped table-bordered", index=False)
+        html += '</div>'
+
+        # Boxplots for each feature (if < 20 categories)
+        for feat in ["price", "rating", "review_count"]:
+            if feat in df.columns and df['category'].nunique() < 20:
+                fig, ax = plt.subplots(figsize=(10, 4))
+                sns.boxplot(
+                    data=df[df['category'].isin(comparative['category'].unique())],
+                    x="category", y=feat, hue="source", ax=ax
+                )
+                ax.set_title(f"{feature_labels.get(feat, feat.capitalize())} Distribution by Category & Source")
+                plt.xticks(rotation=25)
+                img_base64 = fig_to_base64(fig)
+                html += f'<div class="stat-title"><h2>{feature_labels.get(feat, feat.capitalize())} Distribution Boxplot</h2></div>'
+                html += f'<img src="data:image/png;base64,{img_base64}" class="img-fluid mb-4" style="max-width:650px;"><br>'
+
     html += """
     </div>
     </body>
     </html>
     """
-
     os.makedirs(os.path.dirname(outfile), exist_ok=True)
     with open(outfile, "w", encoding="utf-8") as f:
         f.write(html)

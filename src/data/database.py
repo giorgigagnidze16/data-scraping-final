@@ -23,7 +23,6 @@ def sanitize_for_db(val):
 
 
 def sanitize_dict_for_db(d):
-    # Recursively replace NaN/inf with None in dict or list
     if isinstance(d, dict):
         return {k: sanitize_dict_for_db(v) for k, v in d.items()}
     elif isinstance(d, list):
@@ -200,7 +199,7 @@ def save_products(products):
     count_inserted = 0
     for prod in products:
         p = prod.__dict__ if hasattr(prod, "__dict__") else prod
-        p = sanitize_dict_for_db(p)  # <<--- CRUCIAL!
+        p = sanitize_dict_for_db(p)
         try:
             existing = session.query(Product).filter_by(url=p.get('url')).first()
             if not existing:
