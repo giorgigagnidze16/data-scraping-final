@@ -129,7 +129,6 @@ def fig_to_base64(fig):
     return img_base64
 
 
-
 def show_statistical_summary(clean=True):
     df = load_products() if clean else load_products_raw()
     engine = AnalysisEngine(df)
@@ -206,12 +205,11 @@ def show_trends(clean=True):
 
 
 def show_comparative_analysis(
-    clean=True, features=None, min_sources=2, top_n_categories=7, plot=True
+        clean=True, features=None, min_sources=2, top_n_categories=7, plot=True
 ):
     """
     Advanced comparative analysis: clear grouped barplots of mean values.
     """
-    import numpy as np
     df = load_products() if clean else load_products_raw()
     engine = AnalysisEngine(df)
     features = features or ('price', 'rating', 'review_count')
@@ -375,6 +373,27 @@ def generate_html_report(outfile="data_output/report.html", clean=True):
         html += pd.DataFrame(list(nulls.items()), columns=['Column', 'Missing']).to_html(
             classes="table table-hover table-bordered", index=False, border=0)
         html += '</div>'
+    if trends:
+        trend_labels = {
+            "price_trend": "Price Trend",
+            "review_trend": "Review Count Trend"
+        }
+        for key, label in trend_labels.items():
+            trend_df = trends.get(key)
+            if isinstance(trend_df, pd.DataFrame) and not trend_df.empty:
+                fig, ax = plt.subplots(figsize=(8, 4))
+                if "price" in trend_df.columns:
+                    ycol = "price"
+                elif "review_count" in trend_df.columns:
+                    ycol = "review_count"
+                else:
+                    ycol = trend_df.columns[-1]
+                sns.lineplot(data=trend_df, x="category", y=ycol, hue="source", marker="o", ax=ax)
+                ax.set_title(f"{label} by Category & Source")
+                plt.xticks(rotation=25)
+                html += f'<div class="stat-title"><h2>{label} by Category & Source</h2></div>'
+                img_base64 = fig_to_base64(fig)
+                html += f'<img src="data:image/png;base64,{img_base64}" class="img-fluid mb-4" style="max-width:650px;"><br>'
     if uniques:
         html += '<div class="stat-title"><h2>Unique Values</h2></div>'
         html += '<div class="table-responsive">'
@@ -392,7 +411,8 @@ def generate_html_report(outfile="data_output/report.html", clean=True):
     '''
     for _, row in sample_df.iterrows():
         html += "<tr>" + "".join(
-            [f"<td style='max-width:150px; overflow-x:auto;'>{cell if not pd.isnull(cell) else ''}</td>" for cell in row]
+            [f"<td style='max-width:150px; overflow-x:auto;'>{cell if not pd.isnull(cell) else ''}</td>" for cell in
+             row]
         ) + "</tr>"
     html += '''
             </tbody>
@@ -428,13 +448,11 @@ def generate_html_report(outfile="data_output/report.html", clean=True):
                 img_base64 = fig_to_base64(fig)
                 html += f'<img src="data:image/png;base64,{img_base64}" class="img-fluid mb-4" style="max-width:650px;"><br>'
 
-        # Full comparative stats table
         html += '<div class="stat-title"><h2>Comparative Stats Table</h2></div>'
         html += '<div class="table-responsive">'
         html += comparative.to_html(classes="table table-striped table-bordered", index=False)
         html += '</div>'
 
-        # Boxplots for each feature (if < 20 categories)
         for feat in ["price", "rating", "review_count"]:
             if feat in df.columns and df['category'].nunique() < 20:
                 fig, ax = plt.subplots(figsize=(10, 4))
