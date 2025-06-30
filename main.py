@@ -10,6 +10,7 @@ from src.utils.logger import get_logger
 # ======================================================================
 # ===============<<<<<>>>>> (MUST INCLUDE) <<<<<>>>>>===================
 from src.scrapers.selenium.amazon_scraper import AmazonSeleniumScraper
+from src.scrapers.selenium.ebay_selenium_scraper import EbaySeleniumScraper
 from src.scrapers.static_scraper import MicroCenterStaticScraper
 from src.scrapers.scrapy_crawler.newegg_crawler.spriders.newegg_scrapy import NeweggScrapyScraper
 # ===============<<<<<>>>>> (MUST INCLUDE) <<<<<>>>>>===================
