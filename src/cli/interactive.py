@@ -75,10 +75,10 @@ def explore_menu():
                 show_clean_products(n=n)
             elif choice == "3":
                 col = input("Column to filter by (e.g. category): ")
+                op = input("Operator (==, !=, >, <, >=, <=, contains, not contains): ").strip()
                 val = input("Value to filter for: ")
-                contains = input("Substring match? (y/N): ").lower() == "y"
                 clean = input("Use cleaned data? (Y/n): ").lower() != "n"
-                filter_products(col, val, contains=contains, clean=clean)
+                filter_products(col, op, val, clean=clean)
             elif choice == "4":
                 clean = input("Use cleaned data? (Y/n): ").lower() != "n"
                 data_quality_report(clean=clean)

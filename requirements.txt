@@ -11,3 +11,4 @@ matplotlib
 lxml
 pytest
 openpyxl
+seaborn
