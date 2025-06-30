@@ -1,47 +1,132 @@
-from tests.fixtures.pipeline.scraper_orchestrator_fixtures import mock_config, patched_config_loader, \
-    patched_threaded_scrape_executor
+import pytest
+from unittest.mock import patch, MagicMock, call
 
-from src.scrapers.factory import ScraperFactory
-assert 'amazon' in ScraperFactory.available_scrapers(), ScraperFactory.available_scrapers()
-assert 'microcenter' in ScraperFactory.available_scrapers(), ScraperFactory.available_scrapers()
+import src.pipeline.scraper_orchestrator as orchestrator_mod
+from src.pipeline.scraper_orchestrator import ScraperOrchestrator
 
-
-def test_run_scraper_single(patched_config_loader, patched_threaded_scrape_executor):
-    from src.pipeline.scraper_orchestrator import ScraperOrchestrator
-    patched_threaded_scrape_executor.return_value = {
-        "laptops": [{"title": "A", "price": 1}],
-        "monitors": [{"title": "B", "price": 2}],
+@pytest.fixture
+def dummy_config():
+    return {
+        'amazon': {
+            'base_url': 'https://a.com/',
+            'categories': {'laptops': 'cat1', 'pcs': 'cat2'},
+            'max_pages': 1,
+        },
+        'newegg': {
+            'base_url': 'https://n.com/',
+            'categories': {'monitors': 'c3'},
+        }
     }
-    orchestrator = ScraperOrchestrator(scrapers_config_path="dummy.yaml")
-    result = orchestrator._run_scraper("amazon")
-    assert isinstance(result, list)
-    assert result[0]["source"] == "amazon"
-    assert result[0]["category"] == "laptops"
 
+@pytest.fixture
+def fake_registry():
+    class FakeScrapy:
+        is_scrapy = True
 
-def test_run_all(patched_config_loader, patched_threaded_scrape_executor):
-    from src.pipeline.scraper_orchestrator import ScraperOrchestrator
-    patched_threaded_scrape_executor.side_effect = [
-        {"laptops": [{"title": "A"}], "monitors": []},
-        {"desktops": [{"title": "B"}]}
-    ]
-    orchestrator = ScraperOrchestrator(scrapers_config_path="dummy.yaml")
-    all_products = orchestrator.run_all(max_workers=2)
-    assert isinstance(all_products, list)
-    titles = {p["title"] for p in all_products}
-    assert "A" in titles and "B" in titles
+        def __init__(self, config):
+            self.config = config
 
+        def scrape(self, urls):
+            return [
+                {'url': urls[0], 'name': 'X', 'category': None},
+                {'url': urls[1], 'name': 'Y'},
+            ]
 
-def test_scraper_exception_handling(patched_config_loader, patched_threaded_scrape_executor):
-    from src.pipeline.scraper_orchestrator import ScraperOrchestrator
-    def side_effect(*args, **kwargs):
-        scraper_cls = kwargs.get("scraper_cls") or (args[0] if args else None)
-        if scraper_cls and scraper_cls.__name__ == "AmazonSeleniumScraper":
-            raise Exception("Scraper failed")
-        return {"desktops": [{"title": "B"}]}
+    class FakeThreaded:
+        is_scrapy = False
 
-    patched_threaded_scrape_executor.side_effect = side_effect
-    orchestrator = ScraperOrchestrator(scrapers_config_path="dummy.yaml")
-    all_products = orchestrator.run_all(max_workers=2)
-    assert isinstance(all_products, list)
-    assert any(p["title"] == "B" for p in all_products)
+        def __init__(self, config):
+            self.config = config
+
+        def some_scrape_func(self, *a, **kw): return [{'name': 'Z'}]
+
+    return {'amazon': FakeScrapy, 'newegg': FakeThreaded}
+
+@pytest.fixture(autouse=True)
+def patch_config_and_factory(monkeypatch, dummy_config, fake_registry):
+    class DummyCL:
+        def __init__(self, path): pass
+        def get_config(self, name): return dummy_config[name]
+
+    monkeypatch.setattr(orchestrator_mod, "ConfigLoader", DummyCL)
+    monkeypatch.setattr(orchestrator_mod.ScraperFactory, "available_scrapers", staticmethod(lambda: list(dummy_config.keys())))
+    monkeypatch.setattr(orchestrator_mod.ScraperFactory, "_registry", fake_registry)
+    yield
+
+def test_constructor_loads_config_and_names():
+    orch = ScraperOrchestrator("dummy.yaml")
+    assert set(orch.scraper_names) == {"amazon", "newegg"}
+
+@patch.object(orchestrator_mod, "logger")
+def test_run_scraper_scrapy_success(mock_logger):
+    orch = ScraperOrchestrator("dummy.yaml")
+    products = orch._run_scraper("amazon")
+    assert len(products) == 2
+    for p in products:
+        assert p["source"] == "amazon"
+        assert "category" in p
+    assert any("finished" in c[0][0] for c in mock_logger.info.call_args_list)
+
+@patch.object(orchestrator_mod, "logger")
+def test_run_scraper_scrapy_failure(mock_logger):
+    class BrokenScrapy:
+        is_scrapy = True
+        def __init__(self, config): pass
+        def scrape(self, urls): raise RuntimeError("fail")
+
+    orchestrator_mod.ScraperFactory._registry["amazon"] = BrokenScrapy
+
+    orch = ScraperOrchestrator("dummy.yaml")
+    products = orch._run_scraper("amazon")
+    assert products == []
+    assert any("failed" in str(c) for c in mock_logger.error.call_args_list)
+
+@patch.object(orchestrator_mod, "threaded_scrape_executor")
+@patch.object(orchestrator_mod, "logger")
+def test_run_scraper_threaded_success(mock_logger, mock_executor):
+    mock_executor.return_value = {
+        "monitors": [{"name": "Z"}]
+    }
+    orch = ScraperOrchestrator("dummy.yaml")
+    products = orch._run_scraper("newegg")
+    assert products == [{"name": "Z", "source": "newegg", "category": "monitors"}]
+    assert mock_executor.called
+
+@patch.object(orchestrator_mod, "threaded_scrape_executor")
+@patch.object(orchestrator_mod, "logger")
+def test_run_scraper_not_registered(mock_logger, mock_executor):
+    orch = ScraperOrchestrator("dummy.yaml")
+    orchestrator_mod.ScraperFactory._registry.pop("newegg", None)
+    products = orch._run_scraper("newegg")
+    assert products == []
+    assert any("not registered" in str(c) for c in mock_logger.error.call_args_list)
+
+@patch.object(orchestrator_mod, "ProcessPoolExecutor")
+@patch.object(orchestrator_mod, "as_completed")
+@patch.object(orchestrator_mod, "logger")
+def test_run_all_success(mock_logger, mock_as_completed, mock_executor):
+    orch = ScraperOrchestrator("dummy.yaml")
+    fake_future1 = MagicMock()
+    fake_future1.result.return_value = [{"name": "A"}]
+    fake_future2 = MagicMock()
+    fake_future2.result.return_value = [{"name": "B"}]
+    mock_executor.return_value.__enter__.return_value = mock_executor
+    mock_executor.submit.side_effect = [fake_future1, fake_future2]
+    mock_as_completed.return_value = [fake_future1, fake_future2]
+
+    products = orch.run_all(max_workers=2)
+    assert products == [{"name": "A"}, {"name": "B"}]
+
+@patch.object(orchestrator_mod, "ProcessPoolExecutor")
+@patch.object(orchestrator_mod, "as_completed")
+@patch.object(orchestrator_mod, "logger")
+def test_run_all_future_raises(mock_logger, mock_as_completed, mock_executor):
+    orch = ScraperOrchestrator("dummy.yaml")
+    fake_future1 = MagicMock()
+    fake_future1.result.side_effect = RuntimeError("fail")
+    mock_executor.return_value.__enter__.return_value = mock_executor
+    mock_executor.submit.return_value = fake_future1
+    mock_as_completed.return_value = [fake_future1]
+    products = orch.run_all(max_workers=1)
+    assert products == []
+    assert any("Scraper failed" in str(c) for c in mock_logger.error.call_args_list)

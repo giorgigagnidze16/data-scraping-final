@@ -12,7 +12,6 @@ from src.utils.logger import get_logger
 from src.scrapers.selenium_scraper import AmazonSeleniumScraper
 from src.scrapers.static_scraper import MicroCenterStaticScraper
 from src.scrapers.scrapy_crawler.newegg_crawler.spriders.newegg_scrapy import NeweggScrapyScraper
-
 # ===============<<<<<>>>>> (MUST INCLUDE) <<<<<>>>>>===================
 # ======================================================================
 
