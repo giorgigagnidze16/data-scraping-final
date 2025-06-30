@@ -1,7 +1,7 @@
 from unittest.mock import patch
 
 import pytest
-from src.scrapers.selenium_scraper import AmazonSeleniumScraper
+from src.scrapers.selenium.amazon_scraper import AmazonSeleniumScraper
 from src.scrapers.static_scraper import MicroCenterStaticScraper
 
 @pytest.fixture
