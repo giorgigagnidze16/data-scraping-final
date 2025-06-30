@@ -25,7 +25,6 @@ def parse_price(price_parts):
     except Exception:
         return None
 
-
 def parse_rating(class_str):
     import re
     m = re.search(r'rating-(\d+)', class_str or "")
@@ -49,19 +48,8 @@ def get_browser_headers(user_agents):
 
 class NeweggSpider(scrapy.Spider):
     name = "newegg"
-    custom_settings = {
-        'DOWNLOAD_DELAY': 2,
-        'RANDOMIZE_DOWNLOAD_DELAY': 1,
-        'CONCURRENT_REQUESTS': 1,
-        'CONCURRENT_REQUESTS_PER_DOMAIN': 1,
-        'AUTOTHROTTLE_ENABLED': True,
-        'AUTOTHROTTLE_START_DELAY': 2,
-        'AUTOTHROTTLE_MAX_DELAY': 10,
-        'AUTOTHROTTLE_TARGET_CONCURRENCY': 1.0,
-        'AUTOTHROTTLE_DEBUG': False,
-    }
 
-    def __init__(self, start_urls, config, results, max_pages=5, categories=None, user_agents=None, **kwargs):
+    def __init__(self, start_urls, config, results, max_pages=5, categories=None, user_agents=None, proxy_enabled=False, **kwargs):
         super().__init__(**kwargs)
         self.start_urls = start_urls
         self.config = config
@@ -69,11 +57,15 @@ class NeweggSpider(scrapy.Spider):
         self.max_pages = max_pages
         self.category_map = categories or {}
         self.user_agents = user_agents or ["Mozilla/5.0"]
+        self.proxy_enabled = proxy_enabled
         self.request_count = 0
 
     def start_requests(self):
         for url in self.start_urls:
-            api_url = SCRAPERAPI_ENDPOINT.format(url)
+            if self.proxy_enabled:
+                api_url = SCRAPERAPI_ENDPOINT.format(url)
+            else:
+                api_url = url
             meta = {
                 'category': self.category_map.get(url, 'unknown'),
                 'page_num': 1,
@@ -175,9 +167,10 @@ class NeweggSpider(scrapy.Spider):
                 if next_page:
                     break
             if next_page:
-                delay = random.uniform(2, 5)
-                time.sleep(delay)
-                api_url = SCRAPERAPI_ENDPOINT.format(response.urljoin(next_page))
+                if self.proxy_enabled:
+                    api_url = SCRAPERAPI_ENDPOINT.format(response.urljoin(next_page))
+                else:
+                    api_url = response.urljoin(next_page)
                 meta = {
                     'category': category,
                     'page_num': page_num + 1,
@@ -222,21 +215,18 @@ class NeweggScrapyScraper(BaseScraper):
         url_to_category = {self.config["base_url"] + v: k for k, v in categories.items()}
         start_urls = [self.config["base_url"] + v for v in categories.values()]
         user_agents = self.config.get("user_agents", ["Mozilla/5.0"])
+        proxy_enabled = self.config.get("proxy_enabled", False)
 
         process = CrawlerProcess(settings={
             "LOG_ENABLED": False,
-            "DOWNLOAD_DELAY": self.config.get("delay", 2),
-            "RANDOMIZE_DOWNLOAD_DELAY": 1,
+            "DOWNLOAD_DELAY": self.config.get("delay", 0.5),
+            "CONCURRENT_REQUESTS": 8,
+            "CONCURRENT_REQUESTS_PER_DOMAIN": 8,
+            "AUTOTHROTTLE_ENABLED": False,
             "COOKIES_ENABLED": True,
             "ROBOTSTXT_OBEY": False,
             "RETRY_TIMES": self.config.get("max_retries", 2),
             "RETRY_HTTP_CODES": [429, 500, 502, 503, 504, 522, 524, 408],
-            "CONCURRENT_REQUESTS": 1,
-            "CONCURRENT_REQUESTS_PER_DOMAIN": 1,
-            "AUTOTHROTTLE_ENABLED": True,
-            "AUTOTHROTTLE_START_DELAY": 2,
-            "AUTOTHROTTLE_MAX_DELAY": 10,
-            "AUTOTHROTTLE_TARGET_CONCURRENCY": 1.0,
             "DOWNLOADER_MIDDLEWARES": {
                 'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
             }
@@ -251,6 +241,7 @@ class NeweggScrapyScraper(BaseScraper):
             max_pages=max_pages,
             categories=url_to_category,
             user_agents=user_agents,
+            proxy_enabled=proxy_enabled,
         )
         process.start()
         logger.info(f"Scraped {len(results)} Newegg products.")

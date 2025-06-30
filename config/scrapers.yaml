@@ -1,6 +1,6 @@
 amazon:
-  delay: 2
-  max_pages: 10
+  delay: 1
+  max_pages: 15
   max_retries: 5
   base_url: "https://www.amazon.com"
   categories:
@@ -23,8 +23,8 @@ amazon:
     - "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Opera/110.0.0.0 Chrome/124.0.0.0 Safari/537.36"
 
 microcenter:
-  delay: 5
-  max_pages: 10
+  delay: 1
+  max_pages: 15
   max_retries: 5
   base_url: "https://www.microcenter.com"
   categories:
@@ -43,8 +43,8 @@ microcenter:
     - "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Opera/110.0.0.0 Chrome/124.0.0.0 Safari/537.36"
 
 newegg:
-  delay: 2
-  max_pages: 10
+  delay: 1
+  max_pages: 5
   base_url: "https://www.newegg.com"
   categories:
     laptops: "/p/pl?d=laptops"
@@ -52,6 +52,7 @@ newegg:
     monitors: "/p/pl?d=monitors"
     gadgets: "/p/pl?d=gadgets"
     ram: "/p/pl?d=ram"
+  proxy_enabled: True
   user_agents:
     - "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
     - "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Brave Chrome/126.0.0.0 Safari/537.36"
@@ -62,8 +63,8 @@ newegg:
     - "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Opera/110.0.0.0 Chrome/124.0.0.0 Safari/537.36"
 
 ebay:
-  delay: 2
-  max_pages: 5
+  delay: 1
+  max_pages: 15
   max_retries: 5
   base_url: "https://www.ebay.com"
   categories:
