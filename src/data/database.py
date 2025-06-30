@@ -1,4 +1,5 @@
 import json
+import math
 from datetime import datetime
 
 import pandas as pd
@@ -15,6 +16,21 @@ logger = get_logger("database")
 Base = declarative_base()
 
 
+def sanitize_for_db(val):
+    if isinstance(val, float) and (math.isnan(val) or math.isinf(val)):
+        return None
+    return val
+
+
+def sanitize_dict_for_db(d):
+    if isinstance(d, dict):
+        return {k: sanitize_dict_for_db(v) for k, v in d.items()}
+    elif isinstance(d, list):
+        return [sanitize_dict_for_db(x) for x in d]
+    else:
+        return sanitize_for_db(d)
+
+
 class ProductRaw(Base):
     __tablename__ = 'products_raw'
     id = Column(Integer, primary_key=True)
@@ -22,8 +38,8 @@ class ProductRaw(Base):
     category = Column(String)
     title = Column(String, nullable=True)
     price = Column(Float, nullable=True)
-    rating = Column(Float)
-    review_count = Column(Integer)
+    rating = Column(Float, nullable=True)
+    review_count = Column(Integer, nullable=True)
     url = Column(String, nullable=True)
     img_url = Column(String)
     scraped_at = Column(DateTime, nullable=True, default=datetime.utcnow())
@@ -127,6 +143,7 @@ def save_products_raw(products):
     count_inserted = 0
     for prod in products:
         p = prod.__dict__ if hasattr(prod, "__dict__") else prod
+        p = sanitize_dict_for_db(p)
         try:
             existing = session.query(ProductRaw).filter_by(url=p.get('url')).first()
             if not existing:
@@ -135,7 +152,11 @@ def save_products_raw(products):
                 count_inserted += 1
         except Exception as e:
             logger.warning(f"Error inserting raw product ({p.get('title', '')}): {e}")
-    session.commit()
+    try:
+        session.commit()
+    except Exception as e:
+        logger.error(f"Commit failed: {e}")
+        session.rollback()
     session.close()
     logger.info(f"Inserted {count_inserted} new raw products.")
 
@@ -178,6 +199,7 @@ def save_products(products):
     count_inserted = 0
     for prod in products:
         p = prod.__dict__ if hasattr(prod, "__dict__") else prod
+        p = sanitize_dict_for_db(p)
         try:
             existing = session.query(Product).filter_by(url=p.get('url')).first()
             if not existing:
@@ -186,7 +208,11 @@ def save_products(products):
                 count_inserted += 1
         except Exception as e:
             logger.warning(f"Error inserting product ({p.get('title', '')}): {e}")
-    session.commit()
+    try:
+        session.commit()
+    except Exception as e:
+        logger.error(f"Commit failed: {e}")
+        session.rollback()
     session.close()
     logger.info(f"Inserted {count_inserted} new products.")
 

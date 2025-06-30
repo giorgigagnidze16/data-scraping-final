@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS public.products_raw (
     title TEXT,
     price REAL,
     rating REAL,
-    review_count INTEGER,
+    review_count BIGINT,
     url TEXT,
     img_url TEXT,
     scraped_at TIMESTAMP DEFAULT NOW()
@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS public.products (
     title TEXT NOT NULL,
     price REAL NOT NULL,
     rating REAL,
-    review_count INTEGER,
+    review_count BIGINT,
     url TEXT NOT NULL,
     img_url TEXT,
     scraped_at TIMESTAMP DEFAULT NOW()
