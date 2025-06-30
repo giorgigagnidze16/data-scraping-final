@@ -6,6 +6,19 @@ class ProductDataProcessor:
         self.df = df.copy()
 
     def clean_and_validate(self):
+        """
+        Cleans the product data:
+
+            - Drops rows missing 'title', 'price', or 'url'.
+            - Converts 'price', 'rating', and 'review_count' columns to numeric types.
+            - Fills missing 'review_count' with zero.
+            - Converts 'source' and 'category' to lowercase (if present).
+            - Removes duplicate URLs.
+            - Resets the DataFrame index.
+
+        Returns:
+            self: Allows method chaining.
+        """
         self.df = self.df.dropna(subset=['title', 'price', 'url'])
         self.df['price'] = pd.to_numeric(self.df['price'], errors='coerce')
         if 'rating' in self.df:
@@ -21,6 +34,19 @@ class ProductDataProcessor:
         return self
 
     def export(self, filename: str, filetype: str = "csv"):
+        """
+        Exports the cleaned DataFrame to a file.
+
+        Args:
+            filename (str): Output file name (e.g., 'output.csv').
+            filetype (str): File type: 'csv', 'excel', or 'json'. Default is 'csv'.
+
+        Raises:
+            ValueError: If filetype is not supported.
+
+        Returns:
+            self: Allows method chaining.
+        """
         if filetype == "csv":
             self.df.to_csv(filename, index=False)
         elif filetype == "excel":
@@ -32,6 +58,20 @@ class ProductDataProcessor:
         return self
 
     def get_data_quality_report(self) -> dict:
+        """
+        Checks for common data quality issues.
+
+        Returns:
+            dict: Report with keys:
+                - total_rows: number of rows in the DataFrame
+                - missing_titles: number of missing titles
+                - missing_prices: number of missing prices
+                - missing_urls: number of missing URLs
+                - missing_ratings: number of missing ratings
+                - duplicate_urls: number of duplicate URLs
+                - negative_prices: number of prices < 0
+                - outlier_prices: number of prices above 99th percentile
+        """
         total = len(self.df)
         missing_titles = self.df['title'].isnull().sum()
         missing_prices = self.df['price'].isnull().sum()
@@ -53,4 +93,10 @@ class ProductDataProcessor:
         }
 
     def get_df(self):
+        """
+        Returns the processed DataFrame.
+
+        Returns:
+            pd.DataFrame: The current DataFrame with all cleaning/processing applied.
+        """
         return self.df
