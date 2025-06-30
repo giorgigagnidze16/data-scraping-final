@@ -51,6 +51,16 @@ _db_params = {}
 
 
 def configure_engine(host, port, user, password, dbname):
+    """
+    Configures the global database engine and session.
+
+    Args:
+        host (str): Hostname of the PostgreSQL server.
+        port (int): Port number.
+        user (str): Username.
+        password (str): Password.
+        dbname (str): Database name.
+    """
     global _engine, _Session, _db_params
     database_url = f"postgresql://{user}:{password}@{host}:{port}/{dbname}"
     logger.info(f"Configuring database engine: {database_url}")
@@ -67,6 +77,15 @@ def configure_engine(host, port, user, password, dbname):
 
 
 def init_db_with_sql(schema_path="schema.sql"):
+    """
+    Executes the SQL schema file to create or update database tables.
+
+    Args:
+        schema_path (str): Path to schema.sql file. Default is 'schema.sql'.
+
+    Raises:
+        Exception: If the config is not loaded or SQL execution fails.
+    """
     if _engine is None or not _db_params:
         logger.error("config not loaded")
         raise Exception("db engine not configured.")
@@ -94,6 +113,13 @@ def init_db_with_sql(schema_path="schema.sql"):
 
 
 def save_products_raw(products):
+    """
+    Saves a list of raw products to the products_raw table.
+    Skips products that already exist (by URL).
+
+    Args:
+        products (list): List of product dicts or objects.
+    """
     if _Session is None:
         logger.error("Sessionmaker not configured!")
         raise Exception("DB session not configured.")
@@ -115,6 +141,15 @@ def save_products_raw(products):
 
 
 def load_products_raw(as_dataframe=True):
+    """
+    Loads all products from products_raw table.
+
+    Args:
+        as_dataframe (bool): If True, returns DataFrame, else a list of dicts.
+
+    Returns:
+        pandas.DataFrame or list: Product records.
+    """
     if _Session is None:
         logger.error("Sessionmaker not configured! Call configure_engine() first.")
         raise Exception("Database session not configured.")
@@ -129,6 +164,13 @@ def load_products_raw(as_dataframe=True):
 
 
 def save_products(products):
+    """
+    Saves a list of cleaned products to the products table.
+    Skips products that already exist (by URL).
+
+    Args:
+        products (list): List of product dicts or objects.
+    """
     if _Session is None:
         logger.error("Sessionmaker not configured!")
         raise Exception("db session not configured.")
@@ -150,6 +192,15 @@ def save_products(products):
 
 
 def load_products(as_dataframe=True):
+    """
+    Loads all products from products table.
+
+    Args:
+        as_dataframe (bool): If True, returns DataFrame, else a list of dicts.
+
+    Returns:
+        pandas.DataFrame or list: Product records.
+    """
     if _Session is None:
         logger.error("Sessionmaker not configured! Call configure_engine() first.")
         raise Exception("Database session not configured.")
@@ -164,6 +215,15 @@ def load_products(as_dataframe=True):
 
 
 def convert_tuple_keys_to_str(obj):
+    """
+    Converts tuple dict keys to underscore-joined strings (recursively).
+
+    Args:
+        obj: A dict, list, or value.
+
+    Returns:
+        object: Converted object with all dict keys as strings.
+    """
     if isinstance(obj, dict):
         new_dict = {}
         for k, v in obj.items():
@@ -178,6 +238,15 @@ def convert_tuple_keys_to_str(obj):
 
 
 def convert_for_json(obj):
+    """
+    Converts DataFrames and nested objects to dict/list structures for JSON serialization.
+
+    Args:
+        obj: A DataFrame, dict, list, or value.
+
+    Returns:
+        object: JSON-serializable structure.
+    """
     if isinstance(obj, pd.DataFrame):
         return obj.to_dict(orient="records")
     elif isinstance(obj, dict):
@@ -189,6 +258,14 @@ def convert_for_json(obj):
 
 
 def save_analysis_summary(run_id, source, summary_json):
+    """
+    Saves analysis summary JSON to the analysis_summary table.
+
+    Args:
+        run_id (str): Unique run ID.
+        source (str): Source name.
+        summary_json (dict): Analysis summary data.
+    """
     conn = psycopg2.connect(**_db_params)
     cur = conn.cursor()
     summary_json = convert_tuple_keys_to_str(summary_json)
@@ -204,6 +281,16 @@ def save_analysis_summary(run_id, source, summary_json):
 
 
 def save_analysis_group_stats(run_id, group_type, group_value, source, stats_json):
+    """
+    Saves group stats JSON to the analysis_group_stats table.
+
+    Args:
+        run_id (str): Unique run ID.
+        group_type (str): Group type (e.g., category).
+        group_value (str): Value of the group.
+        source (str): Source name.
+        stats_json (dict): Stats data.
+    """
     conn = psycopg2.connect(**_db_params)
     cur = conn.cursor()
     cur.execute(
@@ -217,6 +304,15 @@ def save_analysis_group_stats(run_id, group_type, group_value, source, stats_jso
 
 
 def save_analysis_trends(run_id, trend_type, source, trend_json):
+    """
+    Saves trend analysis JSON to the analysis_trends table.
+
+    Args:
+        run_id (str): Unique run ID.
+        trend_type (str): Trend type (e.g., price).
+        source (str): Source name.
+        trend_json (dict): Trend data.
+    """
     conn = psycopg2.connect(**_db_params)
     cur = conn.cursor()
     cur.execute(
