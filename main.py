@@ -11,6 +11,8 @@ from src.utils.logger import get_logger
 # ===============<<<<<>>>>> (MUST INCLUDE) <<<<<>>>>>===================
 from src.scrapers.selenium_scraper import AmazonSeleniumScraper
 from src.scrapers.static_scraper import MicroCenterStaticScraper
+from src.scrapers.scrapy_crawler.newegg_crawler.spriders.newegg_scrapy import NeweggScrapyScraper
+
 # ===============<<<<<>>>>> (MUST INCLUDE) <<<<<>>>>>===================
 # ======================================================================
 
@@ -41,7 +43,8 @@ def main():
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
         pd.DataFrame(df_clean).to_csv(f"data_output/raw/{timestamp}-products_clean.csv", index=False)
-        pd.DataFrame(df_clean).to_json(f"data_output/raw/{timestamp}-products_clean.json", orient="records", force_ascii=False, indent=2)
+        pd.DataFrame(df_clean).to_json(f"data_output/raw/{timestamp}-products_clean.json", orient="records",
+                                       force_ascii=False, indent=2)
         pd.DataFrame(df_clean).to_excel(f"data_output/raw/{timestamp}-products_clean.xlsx", index=False)
 
         logger.info("Running analysis and exporting reports...")
