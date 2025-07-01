@@ -3,6 +3,8 @@ import operator
 import os
 from io import BytesIO
 
+import warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning)
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
@@ -11,6 +13,23 @@ from src.analysis.analysis_engine import AnalysisEngine
 from src.data.database import load_products, load_products_raw
 from src.data.processors import ProductDataProcessor
 
+def flatten_columns(df):
+    """Flatten MultiIndex columns in a DataFrame."""
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = ['_'.join(map(str, col)).strip('_') for col in df.columns.values]
+    return df
+
+def summarize_grouped(df, groupby="category", fields=None, agg_funcs=None):
+    """
+    Returns a flat, business-friendly summary DataFrame by category or source.
+    """
+    fields = fields or ['price', 'rating', 'review_count']
+    agg_funcs = agg_funcs or ['count', 'mean', 'min', 'max', 'median']
+
+    grouped = df.groupby(groupby)[fields].agg(agg_funcs)
+    grouped = flatten_columns(grouped)
+    grouped = grouped.reset_index()
+    return grouped
 
 def show_table(df, n=10, tail=False):
     if df.empty:
@@ -23,26 +42,23 @@ def show_table(df, n=10, tail=False):
     else:
         print(df.head(n).to_string(index=False))
 
-
 def show_raw_products(n=10, tail=False):
     df = load_products_raw()
     show_table(df, n=n, tail=tail)
-
 
 def show_clean_products(n=10, tail=False):
     df = load_products()
     show_table(df, n=n, tail=tail)
 
-
 def show_stats(clean=True):
     df = load_products() if clean else load_products_raw()
-    print(df.describe(include='all').transpose())
-
+    fields = ['price', 'rating', 'review_count']
+    df_stats = df[fields].describe().transpose()
+    print(df_stats)
 
 def show_columns(clean=True):
     df = load_products() if clean else load_products_raw()
     print("Columns:", ", ".join(df.columns))
-
 
 def filter_products(column, op_str, value, clean=True, n=20):
     df = load_products() if clean else load_products_raw()
@@ -65,13 +81,29 @@ def filter_products(column, op_str, value, clean=True, n=20):
         print(f"Unsupported operator '{op_str}'. Supported: {list(ops.keys())}")
         return
 
-    if op_str in {'>', '<', '>=', '<='}:
+    if op_str == '==' and pd.api.types.is_numeric_dtype(df[column]):
         try:
             value = float(value)
+            epsilon = 1e-4
+            result = (df[column] - value).abs() < epsilon
         except ValueError:
             print(f"Value '{value}' could not be converted to float for numeric comparison.")
             return
-        result = ops[op_str](df[column], value)
+    elif op_str == '!=' and pd.api.types.is_numeric_dtype(df[column]):
+        try:
+            value = float(value)
+            epsilon = 1e-4
+            result = (df[column] - value).abs() > epsilon
+        except ValueError:
+            print(f"Value '{value}' could not be converted to float for numeric comparison.")
+            return
+    elif op_str in {'>', '<', '>=', '<='}:
+        try:
+            value = float(value)
+            result = ops[op_str](df[column], value)
+        except ValueError:
+            print(f"Value '{value}' could not be converted to float for numeric comparison.")
+            return
     elif op_str in {'contains', 'not contains'}:
         result = ops[op_str](df[column].astype(str), value)
     else:
@@ -83,7 +115,6 @@ def filter_products(column, op_str, value, clean=True, n=20):
     else:
         show_table(filtered, n=min(n, len(filtered)))
 
-
 def filter_price(min_price=None, max_price=None, clean=True):
     df = load_products() if clean else load_products_raw()
     if min_price is not None:
@@ -91,7 +122,6 @@ def filter_price(min_price=None, max_price=None, clean=True):
     if max_price is not None:
         df = df[df['price'] <= float(max_price)]
     show_table(df, n=min(20, len(df)))
-
 
 def export_products(file, filetype="csv", clean=True, **filters):
     df = load_products() if clean else load_products_raw()
@@ -109,7 +139,6 @@ def export_products(file, filetype="csv", clean=True, **filters):
         return
     print(f"Exported {len(df)} rows to {file}")
 
-
 def data_quality_report(clean=True):
     df = load_products() if clean else load_products_raw()
     processor = ProductDataProcessor(df)
@@ -119,7 +148,6 @@ def data_quality_report(clean=True):
     for k, v in report.items():
         print(f"{k:20}: {v}")
 
-
 def fig_to_base64(fig):
     buf = BytesIO()
     fig.savefig(buf, format='png', bbox_inches='tight')
@@ -128,39 +156,24 @@ def fig_to_base64(fig):
     plt.close(fig)
     return img_base64
 
-
 def show_statistical_summary(clean=True):
     df = load_products() if clean else load_products_raw()
-    engine = AnalysisEngine(df)
-    stats = engine.summary_statistics()
+    fields = ['price', 'rating', 'review_count']
+    df_stats = df[fields].describe().transpose()
     print("\n=== Statistical Summary ===")
-    print(pd.DataFrame(stats))
+    print(df_stats)
 
+def clean_missing_values(df):
+    df = df.copy()
+    for col in ['rating', 'review_count']:
+        df[col] = df[col].replace(-1, pd.NA)
+    return df
 
 def show_grouped_summary(by="category", clean=True):
     df = load_products() if clean else load_products_raw()
-    analysis = AnalysisEngine(df)
-    if by == "category":
-        stats = analysis.by_category()
-        title = "=== Summary by Category ==="
-    elif by == "source":
-        stats = analysis.by_source()
-        title = "=== Summary by Source ==="
-    else:
-        print("Invalid group by option.")
-        return
-
-    print(title)
-    if isinstance(stats, dict):
-        if all(isinstance(v, dict) for v in stats.values()):
-            df_stats = pd.DataFrame.from_dict(stats, orient='index')
-            print(df_stats)
-        else:
-            df_stats = pd.DataFrame(list(stats.items()), columns=[by, 'value'])
-            print(df_stats)
-    else:
-        print(stats)
-
+    df_stats = summarize_grouped(clean_missing_values(df), groupby=by)
+    print(f"=== Summary by {by.capitalize()} ===")
+    print(df_stats)
 
 def plot_distribution(column="price", clean=True):
     df = load_products() if clean else load_products_raw()
@@ -174,7 +187,6 @@ def plot_distribution(column="price", clean=True):
     plt.ylabel("Count")
     plt.tight_layout()
     plt.show()
-
 
 def show_trends(clean=True):
     df = load_products() if clean else load_products_raw()
@@ -203,7 +215,6 @@ def show_trends(clean=True):
         plt.tight_layout()
         plt.show()
 
-
 def show_comparative_analysis(
         clean=True, features=None, min_sources=2, top_n_categories=7, plot=True
 ):
@@ -227,9 +238,6 @@ def show_comparative_analysis(
     if not plot:
         return
 
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-
     for feat in features:
         if feat in df.columns and df['category'].nunique() <= 10:
             plt.figure(figsize=(10, 5))
@@ -244,7 +252,6 @@ def show_comparative_analysis(
             plt.legend(title="Source")
             plt.tight_layout()
             plt.show()
-
 
 def generate_html_report(outfile="data_output/report.html", clean=True):
     df = load_products() if clean else load_products_raw()
@@ -273,87 +280,18 @@ def generate_html_report(outfile="data_output/report.html", clean=True):
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
         <style>
-            body {
-                background: #f6f7fa;
-                font-family: 'Segoe UI', Arial, sans-serif;
-                color: #222;
-                margin: 0;
-                font-size: 17px;
-            }
-            .container {
-                margin: 40px auto;
-                max-width: 1050px;
-                background: #fff;
-                border-radius: 10px;
-                padding: 28px 16px 24px 16px;
-                box-shadow: 0 2px 8px 0 #ececec33;
-            }
-            h1 {
-                font-size: 2rem;
-                font-weight: 600;
-                color: #23233b;
-                margin-bottom: 22px;
-            }
-            h2 {
-                font-size: 1.15rem;
-                font-weight: 500;
-                margin: 2.3rem 0 1rem 0;
-                color: #3a3a4f;
-            }
-            .stat-title {
-                font-size: 1.09em;
-                background: #f3f4f7;
-                color: #555;
-                padding: 0.55rem 1rem;
-                border-radius: 6px;
-                margin-bottom: 1.1rem;
-                border-left: 3px solid #ececff;
-                margin-top: 2rem;
-            }
-            .table-responsive {
-                margin-bottom: 1.1rem;
-                border-radius: 8px;
-                overflow-x: auto;
-            }
-            .table {
-                background: #fff;
-                border-radius: 7px;
-                overflow: hidden;
-                border: 1px solid #e5e8f0;
-                font-size: 0.97rem;
-            }
-            th {
-                background: #f6f8fa !important;
-                color: #333 !important;
-                font-weight: 600 !important;
-                border-bottom: 2px solid #e2e4ea !important;
-            }
-            td, th {
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                max-width: 150px;
-                font-size: 0.97rem;
-                border: 1px solid #e9e9ef;
-            }
-            a.url-link {
-                color: #316ad3;
-                text-decoration: underline dotted;
-                font-size: 0.96em;
-                word-break: break-all;
-            }
-            .img-fluid {
-                border-radius: 10px;
-                margin-top: 8px;
-                margin-bottom: 12px;
-            }
-            @media (max-width: 700px) {
-                .container { padding: 4px 2px; }
-                th, td { max-width: 85px; font-size: 12px;}
-                h1 { font-size: 1.2rem;}
-                h2 { font-size: 1.01rem;}
-                .stat-title { padding: 0.35rem 0.7rem;}
-            }
+            body { background: #f6f7fa; font-family: 'Segoe UI', Arial, sans-serif; color: #222; margin: 0; font-size: 17px;}
+            .container { margin: 40px auto; max-width: 1050px; background: #fff; border-radius: 10px; padding: 28px 16px 24px 16px; box-shadow: 0 2px 8px 0 #ececec33;}
+            h1 { font-size: 2rem; font-weight: 600; color: #23233b; margin-bottom: 22px;}
+            h2 { font-size: 1.15rem; font-weight: 500; margin: 2.3rem 0 1rem 0; color: #3a3a4f;}
+            .stat-title { font-size: 1.09em; background: #f3f4f7; color: #555; padding: 0.55rem 1rem; border-radius: 6px; margin-bottom: 1.1rem; border-left: 3px solid #ececff; margin-top: 2rem;}
+            .table-responsive { margin-bottom: 1.1rem; border-radius: 8px; overflow-x: auto;}
+            .table { background: #fff; border-radius: 7px; overflow: hidden; border: 1px solid #e5e8f0; font-size: 0.97rem;}
+            th { background: #f6f8fa !important; color: #333 !important; font-weight: 600 !important; border-bottom: 2px solid #e2e4ea !important;}
+            td, th { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; font-size: 0.97rem; border: 1px solid #e9e9ef;}
+            a.url-link { color: #316ad3; text-decoration: underline dotted; font-size: 0.96em; word-break: break-all;}
+            .img-fluid { border-radius: 10px; margin-top: 8px; margin-bottom: 12px;}
+            @media (max-width: 700px) { .container { padding: 4px 2px; } th, td { max-width: 85px; font-size: 12px;} h1 { font-size: 1.2rem;} h2 { font-size: 1.01rem;} .stat-title { padding: 0.35rem 0.7rem;}}
         </style>
     </head>
     <body>
@@ -363,9 +301,11 @@ def generate_html_report(outfile="data_output/report.html", clean=True):
 
     if stats:
         stats_df = pd.DataFrame(stats)
+        stats_df = flatten_columns(stats_df)
+        stats_df = stats_df.reset_index()
         html += '<div class="stat-title"><h2>Summary Statistics</h2></div>'
         html += '<div class="table-responsive">'
-        html += stats_df.to_html(classes="table table-striped table-bordered", border=0)
+        html += stats_df.to_html(classes="table table-striped table-bordered", border=0, index=False)
         html += '</div>'
     if nulls:
         html += '<div class="stat-title"><h2>Missing Values</h2></div>'
@@ -382,12 +322,7 @@ def generate_html_report(outfile="data_output/report.html", clean=True):
             trend_df = trends.get(key)
             if isinstance(trend_df, pd.DataFrame) and not trend_df.empty:
                 fig, ax = plt.subplots(figsize=(8, 4))
-                if "price" in trend_df.columns:
-                    ycol = "price"
-                elif "review_count" in trend_df.columns:
-                    ycol = "review_count"
-                else:
-                    ycol = trend_df.columns[-1]
+                ycol = "price" if "price" in trend_df.columns else "review_count"
                 sns.lineplot(data=trend_df, x="category", y=ycol, hue="source", marker="o", ax=ax)
                 ax.set_title(f"{label} by Category & Source")
                 plt.xticks(rotation=25)
@@ -430,7 +365,6 @@ def generate_html_report(outfile="data_output/report.html", clean=True):
         img_base64 = fig_to_base64(fig)
         html += f'<img src="data:image/png;base64,{img_base64}" class="img-fluid mb-4" style="max-width:650px;"><br>'
 
-    # --- Comparative Analysis (Multiple Features) ---
     if isinstance(comparative, pd.DataFrame) and not comparative.empty:
         feature_labels = {
             "price": "Price", "rating": "Rating", "review_count": "Review Count"
