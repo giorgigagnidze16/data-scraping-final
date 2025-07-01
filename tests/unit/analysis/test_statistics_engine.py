@@ -43,7 +43,6 @@ class TestStatisticsEngine(unittest.TestCase):
     def test_null_summary(self):
         se = StatisticsEngine(self.df_with_nulls_and_uniques)
         nulls = se.null_summary()
-        # Only columns in BUSINESS_FIELDS are counted
         expected = {
             "price": 1,
             "rating": 1,
@@ -74,13 +73,11 @@ class TestStatisticsEngine(unittest.TestCase):
             self.assertIsInstance(tup, tuple)
 
     def test_by_source_missing(self):
-        # Should raise KeyError if 'source' not in DataFrame
         se = StatisticsEngine(self.minimal_numeric_df)
         with self.assertRaises(KeyError):
             se.by_source()
 
     def test_by_category_missing(self):
-        # Should raise KeyError if 'category' not in DataFrame
         se = StatisticsEngine(self.minimal_numeric_df)
         with self.assertRaises(KeyError):
             se.by_category()
