@@ -299,6 +299,19 @@ def generate_html_report(outfile="data_output/report.html", clean=True):
     <h1>Product Data Report</h1>
     """
 
+    review_col = 'review_count' if 'review_count' in df.columns else None
+    if review_col:
+        reviews = df[review_col].where(df[review_col] >= 0, pd.NA)
+        total_reviews = int(reviews.sum(skipna=True))
+        product_count = len(df)
+        products_with_reviews = int((reviews > 0).sum())
+        html += '<div class="stat-title"><h2>Business Summary</h2></div>'
+        html += f'<ul>'
+        html += f'<li><b>Total Products:</b> {product_count:,}</li>'
+        html += f'<li><b>Total Reviews:</b> {total_reviews:,}</li>'
+        html += f'<li><b>Products With Reviews:</b> {products_with_reviews:,}</li>'
+        html += f'</ul>'
+
     if stats:
         stats_df = pd.DataFrame(stats)
         stats_df = flatten_columns(stats_df)
