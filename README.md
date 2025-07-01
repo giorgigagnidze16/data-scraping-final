@@ -16,6 +16,7 @@
 * Interactive command-line interface (CLI) for non-technical users
 * Flexible data exports: CSV, Excel, JSON, HTML report
 * Fully tested, maintainable codebase
+* Potential for Containerization with Dockerfile and Compose
 
 ---
 
