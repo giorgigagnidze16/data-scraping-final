@@ -60,7 +60,7 @@ def show_columns(clean=True):
     df = load_products() if clean else load_products_raw()
     print("Columns:", ", ".join(df.columns))
 
-def filter_products(column, op_str, value, clean=True, n=20):
+def filter_products(column, op_str, value, clean=True, n=20, return_df=False):
     df = load_products() if clean else load_products_raw()
     if column not in df.columns:
         print(f"Column '{column}' not found.")
@@ -112,8 +112,13 @@ def filter_products(column, op_str, value, clean=True, n=20):
     filtered = df[result]
     if filtered.empty:
         print("No results found.")
+        return None if return_df else None
     else:
         show_table(filtered, n=min(n, len(filtered)))
+        if return_df:
+            return filtered
+        else:
+            return None
 
 def filter_price(min_price=None, max_price=None, clean=True):
     df = load_products() if clean else load_products_raw()

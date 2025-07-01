@@ -115,7 +115,21 @@ def explore_menu():
                 op = input("Operator (==, !=, >, <, >=, <=, contains, not contains): ").strip()
                 val = input("Value to filter for: ")
                 clean = input("Use cleaned data? (Y/n): ").lower() != "n"
-                filter_products(col, op, val, clean=clean)
+                filtered_df = filter_products(col, op, val, clean=clean, return_df=True)
+                if filtered_df is not None and not filtered_df.empty:
+                    export = input("Export filtered results? (Y/n): ").strip().lower()
+                    if export != "n":
+                        file = input("Output file name: ")
+                        filetype = input("Type (csv/json/xlsx) [default csv]: ") or "csv"
+                        if filetype == "csv":
+                            filtered_df.to_csv(file, index=False)
+                        elif filetype == "json":
+                            filtered_df.to_json(file, orient='records', force_ascii=False, indent=2)
+                        elif filetype in ("xlsx", "excel"):
+                            filtered_df.to_excel(file, index=False)
+                        else:
+                            print("Unsupported export type.")
+                        print(f"Exported {len(filtered_df)} rows to {file}")
             elif choice == "4":
                 clean = input("Use cleaned data? (Y/n): ").lower() != "n"
                 data_quality_report(clean=clean)
