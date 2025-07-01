@@ -5,7 +5,6 @@ requests
 pandas
 psycopg2-binary
 pyyaml
-fake-useragent
 sqlalchemy
 matplotlib
 lxml
