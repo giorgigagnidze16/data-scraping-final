@@ -232,7 +232,7 @@ def show_comparative_analysis(
     )
     comp = comp[comp['category'].isin(top_categories)]
 
-    print("\n=== Advanced Comparative Analysis (Top Categories) ===")
+    print("\n=== Comparative Analysis ===")
     print(comp.head(top_n_categories * 3).to_string(index=False))
 
     if not plot:
@@ -252,6 +252,19 @@ def show_comparative_analysis(
             plt.legend(title="Source")
             plt.tight_layout()
             plt.show()
+
+def format_floats_for_html(df, float_format="{:,.2f}"):
+    """
+    Convert all float columns in a DataFrame to formatted strings, e.g., 1,234.56.
+    """
+    for col in df.select_dtypes(include="float"):
+        df[col] = df[col].apply(lambda x: float_format.format(x) if pd.notnull(x) else "")
+    return df
+
+def pretty_number(val):
+    if isinstance(val, float):
+        return "{:,.2f}".format(val)
+    return f"{val:,}" if isinstance(val, int) else str(val)
 
 def generate_html_report(outfile="data_output/report.html", clean=True):
     df = load_products() if clean else load_products_raw()
@@ -307,15 +320,16 @@ def generate_html_report(outfile="data_output/report.html", clean=True):
         products_with_reviews = int((reviews > 0).sum())
         html += '<div class="stat-title"><h2>Business Summary</h2></div>'
         html += f'<ul>'
-        html += f'<li><b>Total Products:</b> {product_count:,}</li>'
-        html += f'<li><b>Total Reviews:</b> {total_reviews:,}</li>'
-        html += f'<li><b>Products With Reviews:</b> {products_with_reviews:,}</li>'
+        html += f'<li><b>Total Products:</b> {pretty_number(product_count)}</li>'
+        html += f'<li><b>Total Reviews:</b> {pretty_number(total_reviews)}</li>'
+        html += f'<li><b>Products With Reviews:</b> {pretty_number(products_with_reviews)}</li>'
         html += f'</ul>'
 
     if stats:
         stats_df = pd.DataFrame(stats)
         stats_df = flatten_columns(stats_df)
         stats_df = stats_df.reset_index()
+        stats_df = format_floats_for_html(stats_df)
         html += '<div class="stat-title"><h2>Summary Statistics</h2></div>'
         html += '<div class="table-responsive">'
         html += stats_df.to_html(classes="table table-striped table-bordered", border=0, index=False)
