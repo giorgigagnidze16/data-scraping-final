@@ -9,12 +9,40 @@ logger = get_logger("orchestrator")
 
 
 class ScraperOrchestrator:
+    """
+    Orchestrates the execution of all registered product scrapers,
+    manages their configurations, and aggregates all product results.
+    Handles both threaded and Scrapy-based scrapers in a parallelized workflow.
+
+    Args:
+        scrapers_config_path (str): Path to the YAML configuration file for scrapers.
+
+    Attributes:
+        scrapers_config (ConfigLoader): Loader for all scraper configs.
+        scraper_names (list of str): All available scrapers registered in the factory.
+    """
+
     def __init__(self, scrapers_config_path):
         self.scrapers_config = ConfigLoader(scrapers_config_path)
         self.scraper_names = ScraperFactory.available_scrapers()
         logger.info(f"Available scrapers '{self.scraper_names}'")
 
     def _run_scraper(self, name):
+        """
+        Runs a single scraper by name using its configuration.
+
+        Args:
+            name (str): Name/ID of the scraper to run.
+
+        Returns:
+            list: List of product dicts scraped by this scraper.
+
+        Notes:
+            - For Scrapy-based scrapers (is_scrapy = True), scraping runs in the main process.
+            - For other scrapers, scraping is parallelized using threads per category.
+            - All products are annotated with their 'source' and 'category'.
+            - Any exceptions are caught and logged; returns empty list on error.
+        """
         config = self.scrapers_config.get_config(name)
         scraper_cls = ScraperFactory._registry.get(name)
         if not scraper_cls:
@@ -57,6 +85,21 @@ class ScraperOrchestrator:
         return all_products
 
     def run_all(self, max_workers=2):
+        """
+        Runs all configured scrapers in parallel using process pool.
+
+        Args:
+            max_workers (int): Maximum number of processes (scrapers run in parallel).
+                               Default is 2.
+
+        Returns:
+            list: Combined list of all products from all scrapers.
+
+        Notes:
+            - Each scraper runs in a separate process for isolation.
+            - Aggregates all results into a single product list.
+            - Scraper failures are logged and do not interrupt the rest.
+        """
         all_products = []
         scraper_futures = []
         with ProcessPoolExecutor(max_workers=max_workers) as executor:
