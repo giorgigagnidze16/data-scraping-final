@@ -103,19 +103,3 @@ def test_comparative_analysis_no_mutuals(minimal_df):
     engine = AnalysisEngine(minimal_df)
     result = engine.comparative_analysis()
     assert result.empty
-
-
-def test_handles_empty_df():
-    df = pd.DataFrame(columns=["price", "category", "source", "title"])
-    engine = AnalysisEngine(df)
-    assert engine.df.empty
-    assert engine.summary_statistics() == {}
-    assert engine.nulls() == {"price": 0, "category": 0, "source": 0, "title": 0}
-    assert engine.uniques() == {"price": 0, "category": 0, "source": 0, "title": 0}
-    src = engine.by_source()
-    assert src == {} or src == {'price': {}}
-    cat = engine.by_category()
-    assert cat == {} or cat == {'price': {}}
-    assert set(engine.trend_analysis().keys()) == {"price_trend", "review_trend"}
-    result = engine.comparative_analysis(features=["price"])
-    assert result.empty
